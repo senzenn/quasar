@@ -1,3 +1,5 @@
+pub use solana_account_view::{AccountView, RuntimeAccount, NOT_BORROWED, MAX_PERMITTED_DATA_INCREASE};
+
 #[macro_export]
 macro_rules! dispatch {
     ($ptr:expr, $ix_data:expr, $disc_len:literal, {

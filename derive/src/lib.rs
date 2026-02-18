@@ -350,6 +350,67 @@ pub fn derive_accounts(input: TokenStream) -> TokenStream {
         }
     };
 
+    // --- Client instruction macro (off-chain only) ---
+    // Generates a #[macro_export] macro that the #[program] macro invokes
+    // to produce flat instruction structs with account + arg fields.
+    let snake_name = pascal_to_snake(&name.to_string());
+    let macro_name_str = format!("__{}_instruction", snake_name);
+
+    let account_fields_str: String = fields.iter().map(|f| {
+        let field_name = f.ident.as_ref().unwrap().to_string();
+        format!("pub {}: solana_address::Address,", field_name)
+    }).collect::<Vec<_>>().join("\n                ");
+
+    let account_metas_str: String = fields.iter().map(|f| {
+        let field_name = f.ident.as_ref().unwrap().to_string();
+        let writable = matches!(&f.ty, Type::Reference(r) if r.mutability.is_some());
+        let signer = is_signer_type(&f.ty);
+        if writable {
+            format!("quasar_core::client::AccountMeta::new(ix.{}, {}),", field_name, signer)
+        } else {
+            format!("quasar_core::client::AccountMeta::new_readonly(ix.{}, {}),", field_name, signer)
+        }
+    }).collect::<Vec<_>>().join("\n                        ");
+
+    let macro_def_str = format!(
+        r#"
+        #[cfg(not(any(target_arch = "bpf", target_os = "solana")))]
+        #[doc(hidden)]
+        #[macro_export]
+        macro_rules! {macro_name} {{
+            ($struct_name:ident, [$($disc:expr),*], {{$($arg_name:ident : $arg_ty:ty),*}}) => {{
+                pub struct $struct_name {{
+                    {account_fields}
+                    $(pub $arg_name: $arg_ty,)*
+                }}
+
+                impl From<$struct_name> for quasar_core::client::Instruction {{
+                    fn from(ix: $struct_name) -> quasar_core::client::Instruction {{
+                        let accounts = vec![
+                            {account_metas}
+                        ];
+                        let data = quasar_core::client::build_instruction_data(
+                            &[$($disc),*],
+                            |_data| {{ $(quasar_core::client::WriteBytes::write_bytes(&ix.$arg_name, _data);)* }}
+                        );
+                        quasar_core::client::Instruction {{
+                            program_id: crate::ID,
+                            accounts,
+                            data,
+                        }}
+                    }}
+                }}
+            }};
+        }}
+        "#,
+        macro_name = macro_name_str,
+        account_fields = account_fields_str,
+        account_metas = account_metas_str,
+    );
+
+    let client_macro: proc_macro2::TokenStream = macro_def_str.parse()
+        .expect("failed to parse client instruction macro");
+
     let expanded = quote! {
         #bumps_struct
 
@@ -386,6 +447,8 @@ pub fn derive_accounts(input: TokenStream) -> TokenStream {
                 input
             }
         }
+
+        #client_macro
     };
 
     TokenStream::from(expanded)
@@ -703,6 +766,7 @@ fn extract_ctx_inner_type(sig: &syn::Signature) -> proc_macro2::TokenStream {
 #[proc_macro_attribute]
 pub fn program(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut module = parse_macro_input!(item as ItemMod);
+    let mod_name = module.ident.clone();
 
     let (_, items) = module.content
         .as_ref()
@@ -710,6 +774,7 @@ pub fn program(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // Scan for #[instruction(discriminator = ...)] functions
     let mut dispatch_arms: Vec<proc_macro2::TokenStream> = Vec::new();
+    let mut client_items: Vec<proc_macro2::TokenStream> = Vec::new();
     let mut seen_discriminators: Vec<(Vec<u8>, String)> = Vec::new();
     let mut disc_len: Option<usize> = None;
 
@@ -752,11 +817,43 @@ pub fn program(_attr: TokenStream, item: TokenStream) -> TokenStream {
                             ),
                         ).to_compile_error().into();
                     }
-                    seen_discriminators.push((disc_values, fn_name.to_string()));
+                    seen_discriminators.push((disc_values.clone(), fn_name.to_string()));
 
                     dispatch_arms.push(quote! {
                         [#(#disc_bytes),*] => #fn_name(#accounts_type)
                     });
+
+                    // Collect data for client module generation — invoke the macro_rules
+                    // bridge emitted by derive(Accounts)
+                    let struct_name = format_ident!("{}Instruction", snake_to_pascal(&fn_name.to_string()));
+                    let accounts_type_str = accounts_type.to_string().replace(' ', "");
+                    let macro_ident = format_ident!("__{}_instruction", pascal_to_snake(&accounts_type_str));
+
+                    let remaining_args: Vec<(Ident, Type)> = func.sig.inputs.iter().skip(1).filter_map(|arg| {
+                        match arg {
+                            FnArg::Typed(pt) => {
+                                let name = match &*pt.pat {
+                                    Pat::Ident(pi) => pi.ident.clone(),
+                                    _ => return None,
+                                };
+                                Some((name, (*pt.ty).clone()))
+                            }
+                            _ => None,
+                        }
+                    }).collect();
+
+                    let arg_names: Vec<&Ident> = remaining_args.iter().map(|(n, _)| n).collect();
+                    let arg_types: Vec<&Type> = remaining_args.iter().map(|(_, t)| t).collect();
+
+                    let disc_byte_lits: Vec<proc_macro2::TokenStream> = disc_values.iter().map(|b| {
+                        let lit = proc_macro2::Literal::u8_unsuffixed(*b);
+                        quote! { #lit }
+                    }).collect();
+
+                    client_items.push(quote! {
+                        #macro_ident!(#struct_name, [#(#disc_byte_lits),*], {#(#arg_names : #arg_types),*});
+                    });
+
                     break;
                 }
             }
@@ -791,9 +888,29 @@ pub fn program(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
         });
+
+        // Add client module inside the program module
+        let client_mod: syn::Item = syn::parse2(quote! {
+            #[cfg(not(any(target_arch = "bpf", target_os = "solana")))]
+            pub mod client {
+                use alloc::vec;
+                use super::*;
+
+                #(#client_items)*
+            }
+        }).expect("failed to parse client module");
+        items.push(client_mod);
     }
 
-    quote!(#module).into()
+    quote! {
+        #module
+
+        #[cfg(not(any(target_arch = "bpf", target_os = "solana")))]
+        extern crate alloc;
+
+        #[cfg(not(any(target_arch = "bpf", target_os = "solana")))]
+        pub use #mod_name::client;
+    }.into()
 }
 
 // --- Helpers ---
@@ -811,6 +928,20 @@ fn seed_slice_expr_for_parse(expr: &Expr, field_names: &[String]) -> proc_macro2
     quote! { #expr as &[u8] }
 }
 
+/// Check if a field type's base type is `Signer`.
+fn is_signer_type(ty: &Type) -> bool {
+    let inner = match ty {
+        Type::Reference(r) => &*r.elem,
+        other => other,
+    };
+    if let Type::Path(p) = inner {
+        if let Some(last) = p.path.segments.last() {
+            return last.ident == "Signer";
+        }
+    }
+    false
+}
+
 fn strip_generics(ty: &Type) -> proc_macro2::TokenStream {
     match ty {
         Type::Path(type_path) => {
@@ -824,6 +955,29 @@ fn strip_generics(ty: &Type) -> proc_macro2::TokenStream {
         }
         _ => panic!("Unsupported field type"),
     }
+}
+
+fn pascal_to_snake(s: &str) -> String {
+    let mut result = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if c.is_uppercase() && i > 0 {
+            result.push('_');
+        }
+        result.push(c.to_lowercase().next().unwrap());
+    }
+    result
+}
+
+fn snake_to_pascal(s: &str) -> String {
+    s.split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(c) => c.to_uppercase().to_string() + &chars.collect::<String>(),
+            }
+        })
+        .collect()
 }
 
 // --- Error code macro ---

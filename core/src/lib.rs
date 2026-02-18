@@ -12,11 +12,13 @@ pub mod macros;
 pub mod sysvars;
 pub mod cpi;
 pub mod pda;
+pub mod entrypoint;
 pub mod traits;
 pub mod checks;
 pub mod pod;
 pub mod accounts;
 pub mod context;
-pub mod entrypoint;
 pub mod error;
 pub mod prelude;
+#[cfg(not(any(target_os = "solana", target_arch = "bpf")))]
+pub mod client;
