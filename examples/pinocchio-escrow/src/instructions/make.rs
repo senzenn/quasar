@@ -81,7 +81,8 @@ impl<'info> TryFrom<Context<'info>> for Make<'info> {
         if ctx.data.len() < 16 {
             return Err(EscrowError::InvalidInstructionData);
         }
-        // Safety: bounds-checked above, SBF is little-endian
+        // SAFETY: Bounds-checked above, SBF is little-endian. The u64 casts are technically
+        // misaligned (data pointer is align 1), but SBF handles unaligned access natively.
         let deposit = unsafe { *(ctx.data.as_ptr() as *const u64) };
         let receive = unsafe { *(ctx.data.as_ptr().add(8) as *const u64) };
 

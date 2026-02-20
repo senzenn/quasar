@@ -115,7 +115,9 @@ impl<'info> Refund<'info> {
         let seeds = escrow_seeds(a.maker.address().as_ref(), &bump_bytes);
         let signers = [Signer::from(&seeds)];
 
-        // Safety: no mutable borrows active, offset 64 is the amount field in SPL token layout
+        // SAFETY: No mutable borrows active, offset 64 is the amount field in SPL token layout.
+        // The u64 cast is technically misaligned (align 1 data), but SBF handles unaligned
+        // access natively.
         let vault_amount = unsafe {
             *(a.vault_ta_a.borrow_unchecked().as_ptr().add(64) as *const u64)
         };
