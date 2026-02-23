@@ -23,7 +23,7 @@ fn build_config_data(
     label: &str,
     signers: &[Address],
 ) -> Vec<u8> {
-    let zc_header_size = 32 + 1 + 1 + 2 + 2; // creator + threshold + bump + label_len + signers_count
+    let zc_header_size = 32 + 1 + 1 + 2 + 2; // creator + threshold + bump + label_end + signers_end
     let total = 1 + zc_header_size + label.len() + signers.len() * 32;
     let mut data = vec![0u8; total];
 
@@ -39,10 +39,12 @@ fn build_config_data(
     header[32] = threshold;
     // bump (1 byte)
     header[33] = bump;
-    // label_len (2 bytes LE)
-    header[34..36].copy_from_slice(&(label.len() as u16).to_le_bytes());
-    // signers_count (2 bytes LE)
-    header[36..38].copy_from_slice(&(signers.len() as u16).to_le_bytes());
+    // label_end (cumulative byte offset: label bytes)
+    let label_end = label.len() as u16;
+    header[34..36].copy_from_slice(&label_end.to_le_bytes());
+    // signers_end (cumulative byte offset: label bytes + signer bytes)
+    let signers_end = label_end + (signers.len() as u16 * 32);
+    header[36..38].copy_from_slice(&signers_end.to_le_bytes());
 
     // Variable tail: label bytes, then signer addresses
     let tail_start = 1 + zc_header_size;
@@ -126,9 +128,9 @@ fn test_create() {
     // Verify threshold (offset: disc(1) + creator(32) = 33)
     assert_eq!(config_data[33], threshold, "threshold mismatch");
 
-    // Verify signers count (offset: disc(1) + creator(32) + threshold(1) + bump(1) + label_len(2) = 37)
-    let signers_count = u16::from_le_bytes([config_data[37], config_data[38]]);
-    assert_eq!(signers_count, 3, "signers count should be 3");
+    // Verify signers_end (offset: disc(1) + creator(32) + threshold(1) + bump(1) + label_end(2) = 37)
+    let signers_end = u16::from_le_bytes([config_data[37], config_data[38]]);
+    assert_eq!(signers_end, 3 * 32, "signers_end should be 96 bytes (3 addresses)");
 
     std::println!("\n========================================");
     std::println!("  CREATE CU: {}", result.compute_units_consumed);
@@ -248,12 +250,12 @@ fn test_set_label() {
 
     // Verify label was stored
     let config_data = &result.resulting_accounts[1].1.data;
-    let label_len = u16::from_le_bytes([config_data[35], config_data[36]]) as usize;
-    assert_eq!(label_len, label.len(), "label length mismatch");
+    let label_end = u16::from_le_bytes([config_data[35], config_data[36]]) as usize;
+    assert_eq!(label_end, label.len(), "label_end mismatch");
 
     let zc_header_size = 32 + 1 + 1 + 2 + 2; // 38
     let label_start = 1 + zc_header_size;
-    let stored_label = core::str::from_utf8(&config_data[label_start..label_start + label_len])
+    let stored_label = core::str::from_utf8(&config_data[label_start..label_start + label_end])
         .expect("invalid UTF-8");
     assert_eq!(stored_label, label, "label content mismatch");
 
