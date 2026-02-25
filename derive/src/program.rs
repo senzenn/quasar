@@ -215,7 +215,19 @@ pub(crate) fn program(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
         items.push(syn::parse_quote! {
             #[unsafe(no_mangle)]
+            #[allow(unexpected_cfgs)]
             pub unsafe extern "C" fn entrypoint(ptr: *mut u8, instruction_data: *const u8) -> u64 {
+                // SAFETY: Initialize bump allocator cursor. The SVM maps and zero-inits the heap
+                // region before execution. This write sets the cursor past the 8-byte cursor slot
+                // itself, eliminating the per-allocation zero-check branch in BumpAllocator::alloc.
+                // Assumes re-entrancy is forbidden by the SVM — cursor reset on re-entry would
+                // alias previous allocations.
+                #[cfg(feature = "alloc")]
+                {
+                    let heap_start = super::allocator::HEAP_START_ADDRESS as usize;
+                    *(heap_start as *mut usize) = heap_start + core::mem::size_of::<usize>();
+                }
+
                 // SAFETY: SVM places instruction data length as u64 at offset -8 from the data
                 // pointer. The read is technically misaligned in the abstract machine, but the SVM
                 // buffer is 8-byte aligned and SBF handles unaligned access natively.
@@ -307,8 +319,27 @@ pub(crate) fn program(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #[cfg(not(any(target_arch = "bpf", target_os = "solana")))]
         extern crate alloc;
 
+        #[allow(unexpected_cfgs)]
+        #[cfg(all(any(target_os = "solana", target_arch = "bpf"), feature = "alloc"))]
+        extern crate alloc;
+
         #[cfg(not(any(target_arch = "bpf", target_os = "solana")))]
         pub use #mod_name::client;
+
+        #[cfg(any(target_os = "solana", target_arch = "bpf"))]
+        #[panic_handler]
+        fn panic(_info: &core::panic::PanicInfo<'_>) -> ! {
+            quasar_core::prelude::log("PANIC");
+            loop {}
+        }
+
+        #[allow(unexpected_cfgs)]
+        #[cfg(feature = "alloc")]
+        quasar_core::heap_alloc!();
+
+        #[allow(unexpected_cfgs)]
+        #[cfg(not(feature = "alloc"))]
+        quasar_core::no_alloc!();
     }
     .into()
 }
