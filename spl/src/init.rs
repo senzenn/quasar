@@ -1,4 +1,3 @@
-use quasar_core::cpi::system::SYSTEM_PROGRAM_ID;
 use quasar_core::prelude::*;
 
 use crate::constants::{SPL_TOKEN_ID, TOKEN_2022_ID};
@@ -77,7 +76,7 @@ pub trait InitToken: AsAccountView + Sized {
         rent: Option<&Rent>,
     ) -> Result<(), ProgramError> {
         let view = self.to_account_view();
-        if view.owned_by(&SYSTEM_PROGRAM_ID) {
+        if quasar_core::is_system_program(unsafe { view.owner() }) {
             self.init(system_program, payer, token_program, mint, owner, rent)
         } else {
             // Validate that the account is owned by a token program.
@@ -176,7 +175,7 @@ pub trait InitMint: AsAccountView + Sized {
         rent: Option<&Rent>,
     ) -> Result<(), ProgramError> {
         let view = self.to_account_view();
-        if view.owned_by(&SYSTEM_PROGRAM_ID) {
+        if quasar_core::is_system_program(unsafe { view.owner() }) {
             self.init(
                 system_program,
                 payer,
