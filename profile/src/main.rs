@@ -7,14 +7,16 @@ mod walk;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use elf::DebugLevel;
 use memmap2::Mmap;
 use toml::Value;
 
+const PROFILER_BASE_URL: &str = "https://quasar-profiler.blueshift.gg";
+
 enum OutputMode {
     Json,
-    Svg,
     Folded,
     Text,
 }
@@ -24,14 +26,14 @@ fn main() {
 
     if args.get(1).is_some_and(|a| a == "--help" || a == "-h") {
         eprintln!(
-            "Usage: quasar-profile <path-to-elf.so> [-o output.json] [--json|--svg|--folded|--text]"
+            "Usage: quasar-profile <path-to-elf.so> [-o output.json] [--json|--folded|--text] [--no-gist|--share]"
         );
         std::process::exit(0);
     }
 
     if args.len() < 2 {
         eprintln!(
-            "Usage: quasar-profile <path-to-elf.so> [-o output.json] [--json|--svg|--folded|--text]"
+            "Usage: quasar-profile <path-to-elf.so> [-o output.json] [--json|--folded|--text] [--no-gist|--share]"
         );
         std::process::exit(1);
     }
@@ -39,6 +41,8 @@ fn main() {
     let elf_path = PathBuf::from(&args[1]);
     let mut output_path: Option<PathBuf> = None;
     let mut mode = OutputMode::Json;
+    let mut no_gist = false;
+    let mut public_gist = false;
 
     let mut i = 2;
     while i < args.len() {
@@ -50,12 +54,13 @@ fn main() {
                 ));
             }
             "--json" => mode = OutputMode::Json,
-            "--svg" => mode = OutputMode::Svg,
             "--folded" => mode = OutputMode::Folded,
             "--text" => mode = OutputMode::Text,
+            "--no-gist" => no_gist = true,
+            "--share" => public_gist = true,
             "--help" | "-h" => {
                 eprintln!(
-                    "Usage: quasar-profile <path-to-elf.so> [-o output.json] [--json|--svg|--folded|--text]"
+                    "Usage: quasar-profile <path-to-elf.so> [-o output.json] [--json|--folded|--text] [--no-gist|--share]"
                 );
                 std::process::exit(0);
             }
@@ -124,11 +129,6 @@ fn main() {
                 .and_then(|s| s.to_str())
                 .map(|name| format!("{}.profile.json", name))
                 .unwrap_or_else(|| "profile.json".to_string()),
-            OutputMode::Svg => elf_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .map(|name| format!("{}.profile.svg", name))
-                .unwrap_or_else(|| "profile.svg".to_string()),
             OutputMode::Folded => "profile.folded".to_string(),
             OutputMode::Text => "profile.txt".to_string(),
         };
@@ -150,10 +150,19 @@ fn main() {
                 "unknown", // TODO: When we decide what to put as the hash edit this
             );
             eprintln!("Profile JSON written to: {}", output_path.display());
-        }
-        OutputMode::Svg => {
-            output::write_svg(&result.folded_stacks, &output_path, program_name);
-            eprintln!("Flame graph written to: {}", output_path.display());
+
+            if !no_gist {
+                ensure_gh_installed();
+                let desc = format!("{} CU profile v{}", program_name, version);
+                let gist_url = create_gist(&output_path, &desc, public_gist);
+                let profiler_url = profiler_url_from_gist(&gist_url).unwrap_or_else(|| {
+                    eprintln!("Error: failed to parse gist URL: {}", gist_url);
+                    std::process::exit(1);
+                });
+                println!("{}", profiler_url);
+            } else {
+                eprintln!("--no-gist enabled; no profiler URL generated");
+            }
         }
         OutputMode::Folded => {
             print!("{}", result.folded_stacks);
@@ -191,6 +200,79 @@ fn resolve_program_version(elf_path: &std::path::Path, program_name: &str) -> St
     }
 
     read_workspace_version(&workspace_root).unwrap_or_else(|| "unknown".to_string())
+}
+
+fn ensure_gh_installed() {
+    let status = Command::new("gh")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {}
+        _ => {
+            eprintln!("Error: GitHub CLI (gh) is required to publish profile gists.");
+            eprintln!("Install: https://cli.github.com/");
+            std::process::exit(1);
+        }
+    }
+}
+
+fn create_gist(path: &Path, desc: &str, public: bool) -> String {
+    let mut cmd = Command::new("gh");
+    cmd.arg("gist")
+        .arg("create")
+        .arg(path)
+        .arg("--desc")
+        .arg(desc);
+    if public {
+        cmd.arg("--public");
+    }
+
+    let output = cmd.output().unwrap_or_else(|e| {
+        eprintln!("Error: failed to run gh gist create: {}", e);
+        std::process::exit(1);
+    });
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("Error: gh gist create failed");
+        if !stderr.trim().is_empty() {
+            eprintln!("{}", stderr.trim());
+        }
+        std::process::exit(1);
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let url = stdout.trim();
+    if url.is_empty() {
+        eprintln!("Error: gh gist create returned no URL");
+        std::process::exit(1);
+    }
+    url.to_string()
+}
+
+fn profiler_url_from_gist(gist_url: &str) -> Option<String> {
+    let no_query = gist_url.split('?').next()?.trim_end_matches('/');
+    let no_scheme = no_query
+        .strip_prefix("https://")
+        .or_else(|| no_query.strip_prefix("http://"))
+        .unwrap_or(no_query);
+    let mut parts = no_scheme.split('/');
+    let host = parts.next()?;
+    if host != "gist.github.com" {
+        return None;
+    }
+    let owner = parts.next()?;
+    let gist_id = parts.next()?;
+    if owner.is_empty() || gist_id.is_empty() {
+        return None;
+    }
+    Some(format!(
+        "{}/?bench={}/{}",
+        PROFILER_BASE_URL, owner, gist_id
+    ))
 }
 
 fn find_workspace_root(start: &std::path::Path) -> Option<PathBuf> {
