@@ -848,7 +848,7 @@ describe("{class_name} Program", async () => {{
 
     const result = vm.processInstruction(initializeInstruction, accounts);
 
-    assert.equal(result.status, 0);
+    assert.isTrue(result.status.ok, `initialize failed:\\n${{result.logs.join("\\n")}}`);
   }});
 
   run()
@@ -893,7 +893,7 @@ describe("{class_name} Program", async () => {{
 
     const result = vm.processInstruction(initializeInstruction, accounts);
 
-    assert.equal(result.status, 0);
+    assert.isTrue(result.status.ok, `initialize failed:\\n${{result.logs.join("\\n")}}`);
   }});
 
   run();
