@@ -518,7 +518,7 @@ pub fn run(
     } else {
         let template_items = &[
             "Minimal (instruction file only)",
-            "Full (state, events, and instruction files)",
+            "Full (state, errors, and instruction files)",
         ];
         Select::with_theme(&theme)
             .with_prompt("Template")
@@ -699,15 +699,7 @@ fn scaffold(
     // Template-specific files
     match template {
         Template::Minimal => {
-            let instructions_dir = src.join("instructions");
-            fs::create_dir_all(&instructions_dir).map_err(anyhow::Error::from)?;
-            fs::write(instructions_dir.join("mod.rs"), INSTRUCTIONS_MOD)
-                .map_err(anyhow::Error::from)?;
-            fs::write(
-                instructions_dir.join("initialize.rs"),
-                INSTRUCTION_INITIALIZE,
-            )
-            .map_err(anyhow::Error::from)?;
+            // Everything lives in lib.rs — no instructions/ directory needed
         }
         Template::Full => {
             let instructions_dir = src.join("instructions");
@@ -720,7 +712,7 @@ fn scaffold(
             )
             .map_err(anyhow::Error::from)?;
             fs::write(src.join("state.rs"), STATE_RS).map_err(anyhow::Error::from)?;
-            fs::write(src.join("events.rs"), EVENTS_RS).map_err(anyhow::Error::from)?;
+            fs::write(src.join("errors.rs"), ERRORS_RS).map_err(anyhow::Error::from)?;
         }
     }
 
@@ -853,10 +845,20 @@ fn generate_lib_rs(
 
 use quasar_lang::prelude::*;
 
-mod instructions;
-use instructions::*;
-
 declare_id!("{program_id}");
+
+#[derive(Accounts)]
+pub struct Initialize<'info> {{
+    pub payer: &'info mut Signer,
+    pub system_program: &'info Program<System>,
+}}
+
+impl<'info> Initialize<'info> {{
+    #[inline(always)]
+    pub fn initialize(&self) -> Result<(), ProgramError> {{
+        Ok(())
+    }}
+}}
 
 #[program]
 mod {module_name} {{
@@ -876,7 +878,7 @@ mod {module_name} {{
 
 use quasar_lang::prelude::*;
 
-mod events;
+mod errors;
 mod instructions;
 mod state;
 use instructions::*;
@@ -1207,11 +1209,12 @@ pub struct MyAccount {
 }
 "#;
 
-const EVENTS_RS: &str = r#"use quasar_lang::prelude::*;
+const ERRORS_RS: &str = r#"use quasar_lang::prelude::*;
 
-#[event(discriminator = 0)]
-pub struct InitializeEvent {
-    pub authority: Address,
+#[error_code]
+pub enum MyError {
+    #[msg("unauthorized")]
+    Unauthorized,
 }
 "#;
 

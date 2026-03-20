@@ -167,6 +167,131 @@ fn add_instruction_to_entrypoint(lib_content: &str, snake: &str, pascal: &str) -
     Some(result)
 }
 
+pub fn run_state(name: &str) -> CliResult {
+    let snake = name.replace('-', "_");
+
+    if snake.is_empty()
+        || snake.starts_with(|c: char| c.is_ascii_digit())
+        || !snake.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        eprintln!(
+            "  {}",
+            style::fail(&format!("invalid state name: \"{name}\""))
+        );
+        eprintln!(
+            "  {}",
+            style::dim("must be a valid Rust identifier (e.g. vault, user_profile)")
+        );
+        std::process::exit(1);
+    }
+
+    let pascal = snake_to_pascal(&snake);
+    let state_path = Path::new("src").join("state.rs");
+    let already_exists = state_path.exists();
+
+    if already_exists {
+        let existing = fs::read_to_string(&state_path).map_err(anyhow::Error::from)?;
+
+        // Find the highest existing discriminator in state.rs
+        let mut max_disc: i64 = 0;
+        for line in existing.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("#[account(discriminator") {
+                if let Some(start) = trimmed.find("= ") {
+                    if let Some(end) = trimmed[start + 2..].find(')') {
+                        if let Ok(n) = trimmed[start + 2..start + 2 + end].trim().parse::<i64>() {
+                            if n > max_disc {
+                                max_disc = n;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let next_disc = max_disc + 1;
+        let new_struct = format!(
+            "\n#[account(discriminator = {next_disc})]\npub struct {pascal} {{\n    pub authority: Address,\n}}\n"
+        );
+
+        let updated = format!("{existing}{new_struct}");
+        fs::write(&state_path, updated).map_err(anyhow::Error::from)?;
+    } else {
+        let content = format!(
+            r#"use quasar_lang::prelude::*;
+
+#[account(discriminator = 1)]
+pub struct {pascal} {{
+    pub authority: Address,
+}}
+"#
+        );
+        fs::write(&state_path, content).map_err(anyhow::Error::from)?;
+    }
+
+    println!(
+        "  {} src/state.rs ({})",
+        style::success(if already_exists { "updated" } else { "created" }),
+        pascal,
+    );
+
+    Ok(())
+}
+
+pub fn run_error(name: &str) -> CliResult {
+    let snake = name.replace('-', "_");
+
+    if snake.is_empty()
+        || snake.starts_with(|c: char| c.is_ascii_digit())
+        || !snake.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        eprintln!(
+            "  {}",
+            style::fail(&format!("invalid error name: \"{name}\""))
+        );
+        eprintln!(
+            "  {}",
+            style::dim("must be a valid Rust identifier (e.g. vault_error, access_error)")
+        );
+        std::process::exit(1);
+    }
+
+    let pascal = snake_to_pascal(&snake);
+    let errors_path = Path::new("src").join("errors.rs");
+    let already_exists = errors_path.exists();
+
+    if already_exists {
+        let existing = fs::read_to_string(&errors_path).map_err(anyhow::Error::from)?;
+
+        let new_enum = format!(
+            "\n#[error_code]\npub enum {pascal} {{\n    #[msg(\"unknown error\")]\n    Unknown,\n}}\n"
+        );
+
+        let updated = format!("{existing}{new_enum}");
+        fs::write(&errors_path, updated).map_err(anyhow::Error::from)?;
+    } else {
+        let content = format!(
+            r#"use quasar_lang::prelude::*;
+
+#[error_code]
+pub enum {pascal} {{
+    #[msg("unknown error")]
+    Unknown,
+}}
+"#
+        );
+        fs::write(&errors_path, content).map_err(anyhow::Error::from)?;
+    }
+
+    println!(
+        "  {} src/errors.rs ({})",
+        style::success(if already_exists { "updated" } else { "created" }),
+        pascal,
+    );
+
+    Ok(())
+}
+
 fn snake_to_pascal(s: &str) -> String {
     s.split('_')
         .map(|word| {

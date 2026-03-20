@@ -34,8 +34,8 @@ pub struct Cli {
 pub enum Command {
     /// Scaffold a new Quasar project
     Init(InitCommand),
-    /// Generate boilerplate (instructions, state, etc.)
-    New(NewCommand),
+    /// Add instructions, state, and errors to the project
+    Template(TemplateCommand),
     /// Compile the on-chain program
     Build(BuildCommand),
     /// Run the test suite
@@ -89,16 +89,28 @@ pub struct InitCommand {
 }
 
 #[derive(Args, Debug)]
-pub struct NewCommand {
+pub struct TemplateCommand {
     #[command(subcommand)]
-    pub what: NewWhat,
+    pub what: TemplateAction,
 }
 
 #[derive(Subcommand, Debug)]
-pub enum NewWhat {
-    /// Scaffold a new instruction handler
-    Instruction {
-        /// Instruction name (snake_case)
+pub enum TemplateAction {
+    /// Add a new instruction handler
+    #[command(name = "add-instruction")]
+    AddInstruction {
+        #[arg(value_name = "NAME")]
+        name: String,
+    },
+    /// Add a new state account
+    #[command(name = "add-state")]
+    AddState {
+        #[arg(value_name = "NAME")]
+        name: String,
+    },
+    /// Add a new error enum
+    #[command(name = "add-error")]
+    AddError {
         #[arg(value_name = "NAME")]
         name: String,
     },
@@ -247,8 +259,10 @@ pub fn run(cli: Cli) -> CliResult {
             cmd.template,
             cmd.toolchain,
         ),
-        Command::New(cmd) => match cmd.what {
-            NewWhat::Instruction { name } => new::run_instruction(&name),
+        Command::Template(cmd) => match cmd.what {
+            TemplateAction::AddInstruction { name } => new::run_instruction(&name),
+            TemplateAction::AddState { name } => new::run_state(&name),
+            TemplateAction::AddError { name } => new::run_error(&name),
         },
         Command::Build(cmd) => build::run(cmd.debug, cmd.watch, cmd.features),
         Command::Test(cmd) => test::run(cmd.debug, cmd.filter, cmd.watch, cmd.no_build),
@@ -316,7 +330,12 @@ pub fn print_help() {
     println!();
     println!("  {}", style::bold("Commands:"));
     print_cmd("init   [name] [-y] [--no-git]", "Scaffold a new project");
-    print_cmd("new    instruction <name>", "Generate a new instruction");
+    print_cmd(
+        "template add-instruction <name>",
+        "Add a new instruction",
+    );
+    print_cmd("template add-state <name>", "Add a new state account");
+    print_cmd("template add-error <name>", "Add a new error enum");
     print_cmd(
         "build  [--debug] [--watch] [--features]",
         "Compile the on-chain program",
