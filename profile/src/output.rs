@@ -408,7 +408,7 @@ pub fn write_json(
     binary_size: u64,
     binary_hash: &str,
 ) {
-    let root = frame_tree_from_folded(&result.folded_stacks, result.total_cus);
+    let root = frame_tree_from_stacks(result);
     let profile = ProfileData {
         program: program_name.to_string(),
         version: version.to_string(),
@@ -430,25 +430,14 @@ pub fn write_json(
     writer.flush().unwrap();
 }
 
-fn frame_tree_from_folded(folded: &str, total: u64) -> FrameNode {
+fn frame_tree_from_stacks(result: &ProfileResult) -> FrameNode {
     let mut synthetic = BuildNode::default();
 
-    for line in folded.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        let Some((stack, count_str)) = trimmed.rsplit_once(' ') else {
-            continue;
-        };
-        let Ok(count) = count_str.parse::<u64>() else {
-            continue;
-        };
-
+    for (stack, count) in &result.stack_counts {
         let mut cursor = &mut synthetic;
-        for part in stack.split(';') {
-            let node = cursor.children.entry(part.to_string()).or_default();
-            node.value += count;
+        for part in stack.iter().rev() {
+            let node = cursor.children.entry(part.clone()).or_default();
+            node.value += *count;
             cursor = node;
         }
     }
@@ -466,7 +455,7 @@ fn frame_tree_from_folded(folded: &str, total: u64) -> FrameNode {
     children.sort_by(|a, b| b.value.cmp(&a.value).then_with(|| a.name.cmp(&b.name)));
     FrameNode {
         name: "all".to_string(),
-        value: total,
+        value: result.total_cus,
         children,
     }
 }
