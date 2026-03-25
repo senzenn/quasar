@@ -32,34 +32,34 @@ mod token_state;
 #[cfg(test)]
 mod helpers;
 #[cfg(test)]
-mod test_validate_token;
-#[cfg(test)]
-mod test_validate_mint;
-#[cfg(test)]
-mod test_validate_ata;
-#[cfg(test)]
-mod test_init_token;
-#[cfg(test)]
-mod test_init_ata;
-#[cfg(test)]
-mod test_init_mint;
-#[cfg(test)]
-mod test_cpi_transfer;
-#[cfg(test)]
-mod test_cpi_approve_revoke;
-#[cfg(test)]
-mod test_cpi_mint_burn;
-#[cfg(test)]
-mod test_cpi_close;
+mod test_ata_derivation;
 #[cfg(test)]
 mod test_close_attr;
 #[cfg(test)]
-mod test_init_token_pda;
+mod test_cpi_approve_revoke;
 #[cfg(test)]
-mod test_init_mint_pda;
+mod test_cpi_close;
+#[cfg(test)]
+mod test_cpi_mint_burn;
+#[cfg(test)]
+mod test_cpi_transfer;
+#[cfg(test)]
+mod test_init_ata;
 #[cfg(test)]
 mod test_init_interface;
 #[cfg(test)]
+mod test_init_mint;
+#[cfg(test)]
+mod test_init_mint_pda;
+#[cfg(test)]
+mod test_init_token;
+#[cfg(test)]
+mod test_init_token_pda;
+#[cfg(test)]
 mod test_sweep;
 #[cfg(test)]
-mod test_ata_derivation;
+mod test_validate_ata;
+#[cfg(test)]
+mod test_validate_mint;
+#[cfg(test)]
+mod test_validate_token;

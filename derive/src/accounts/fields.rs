@@ -16,7 +16,8 @@ use {
 pub(super) struct CloseFieldInfo {
     pub field: Ident,
     pub destination: Ident,
-    /// For token/mint types, CPI close requires the token program and authority.
+    /// For token/mint types, CPI close requires the token program and
+    /// authority.
     pub cpi_close: Option<CpiCloseInfo>,
 }
 
@@ -104,7 +105,8 @@ fn find_field_by_type<'a>(
     None
 }
 
-/// Check if a field's type is `InterfaceAccount<T>` (or `&InterfaceAccount<T>`).
+/// Check if a field's type is `InterfaceAccount<T>` (or
+/// `&InterfaceAccount<T>`).
 fn is_interface_account_field(field: &syn::Field) -> bool {
     let ty = match &field.ty {
         Type::Reference(r) => &*r.elem,
@@ -114,8 +116,8 @@ fn is_interface_account_field(field: &syn::Field) -> bool {
 }
 
 /// Check if a field's type wraps a token or mint inner type
-/// (`Account<Token>`, `Account<Token2022>`, `Account<Mint>`, `Account<Mint2022>`,
-/// `InterfaceAccount<Token>`, `InterfaceAccount<Mint>`).
+/// (`Account<Token>`, `Account<Token2022>`, `Account<Mint>`,
+/// `Account<Mint2022>`, `InterfaceAccount<Token>`, `InterfaceAccount<Mint>`).
 fn is_token_or_mint_field(field: &syn::Field) -> bool {
     const TOKEN_MINT_TYPES: &[&str] = &["Token", "Token2022", "Mint", "Mint2022"];
     let ty = match &field.ty {
@@ -462,7 +464,8 @@ fn validate_field_attrs(
     );
     reject!(
         attrs.realloc.is_some() && is_token_or_mint_field(field),
-        "#[account(realloc)] cannot be used on token or mint accounts — their size is fixed by the token program"
+        "#[account(realloc)] cannot be used on token or mint accounts — their size is fixed by \
+         the token program"
     );
 
     // Sweep validations
@@ -640,10 +643,8 @@ pub(super) fn process_fields(
     // Non-init InterfaceAccount fields with token/ata attrs need a runtime
     // token_program_field. Account<Token>/Account<Token2022> resolve at compile
     // time and do NOT require one.
-    let has_any_non_init_interface_needing_program = field_attrs
-        .iter()
-        .zip(fields.iter())
-        .any(|(a, f)| {
+    let has_any_non_init_interface_needing_program =
+        field_attrs.iter().zip(fields.iter()).any(|(a, f)| {
             let is_init = a.is_init || a.init_if_needed;
             let needs_program = a.token_mint.is_some()
                 || (a.associated_token_mint.is_some()
@@ -665,17 +666,16 @@ pub(super) fn process_fields(
         if has_any_non_init_interface_needing_program && detected.token_program_count > 1 {
             return Err(syn::Error::new(
                 proc_macro2::Span::call_site(),
-                "Multiple token program fields detected. Use \
-                 `associated_token::token_program = <field>` to specify which one.",
+                "Multiple token program fields detected. Use `associated_token::token_program = \
+                 <field>` to specify which one.",
             )
             .to_compile_error()
             .into());
         }
         Some(DetectedFields::require(
             detected.token_program,
-            "token/ATA/mint/master_edition init or InterfaceAccount validation requires a \
-             token program field (Program<Token>, Program<Token2022>, or \
-             Interface<TokenInterface>)",
+            "token/ATA/mint/master_edition init or InterfaceAccount validation requires a token \
+             program field (Program<Token>, Program<Token2022>, or Interface<TokenInterface>)",
         )?)
     } else {
         None
@@ -1064,16 +1064,18 @@ pub(super) fn process_fields(
             if !is_token_account_field(receiver_field) {
                 return Err(syn::Error::new_spanned(
                     receiver,
-                    "sweep target must be a token account (Account<Token>, Account<Token2022>, or InterfaceAccount<Token>)",
+                    "sweep target must be a token account (Account<Token>, Account<Token2022>, or \
+                     InterfaceAccount<Token>)",
                 )
                 .to_compile_error()
                 .into());
             }
             // Validate target is mutable.
             let target_is_mut = matches!(&receiver_field.ty, Type::Reference(r) if r.mutability.is_some())
-                || field_attrs.iter().zip(fields.iter()).any(|(a, f)| {
-                    f.ident.as_ref() == Some(receiver) && a.is_mut
-                });
+                || field_attrs
+                    .iter()
+                    .zip(fields.iter())
+                    .any(|(a, f)| f.ident.as_ref() == Some(receiver) && a.is_mut);
             if !target_is_mut {
                 return Err(syn::Error::new_spanned(
                     receiver,
@@ -1084,15 +1086,13 @@ pub(super) fn process_fields(
             }
             // Validate token::authority is a Signer.
             if let Some(auth_name) = &attrs.token_authority {
-                let auth_field = fields
-                    .iter()
-                    .find(|f| f.ident.as_ref() == Some(auth_name));
+                let auth_field = fields.iter().find(|f| f.ident.as_ref() == Some(auth_name));
                 if let Some(af) = auth_field {
                     if !is_signer_field(af) {
                         return Err(syn::Error::new_spanned(
                             auth_name,
-                            "sweep requires `token::authority` to be a Signer \
-                             (it must sign the transfer_checked CPI)",
+                            "sweep requires `token::authority` to be a Signer (it must sign the \
+                             transfer_checked CPI)",
                         )
                         .to_compile_error()
                         .into());

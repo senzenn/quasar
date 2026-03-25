@@ -34,7 +34,11 @@ fn approve_spl() {
             signer_account(delegate_key),
         ],
     );
-    assert!(result.is_ok(), "approve SPL should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "approve SPL should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================
@@ -67,7 +71,11 @@ fn approve_t22() {
             signer_account(delegate_key),
         ],
     );
-    assert!(result.is_ok(), "approve T22 should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "approve T22 should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================
@@ -164,10 +172,22 @@ fn revoke_spl() {
         &instruction,
         &[
             signer_account(authority),
-            token_account_with_delegate(source_key, mint_key, authority, 1000, delegate_key, 500, token_program),
+            token_account_with_delegate(
+                source_key,
+                mint_key,
+                authority,
+                1000,
+                delegate_key,
+                500,
+                token_program,
+            ),
         ],
     );
-    assert!(result.is_ok(), "revoke SPL should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "revoke SPL should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================
@@ -194,10 +214,22 @@ fn revoke_t22() {
         &instruction,
         &[
             signer_account(authority),
-            token_account_with_delegate(source_key, mint_key, authority, 1000, delegate_key, 500, token_program),
+            token_account_with_delegate(
+                source_key,
+                mint_key,
+                authority,
+                1000,
+                delegate_key,
+                500,
+                token_program,
+            ),
         ],
     );
-    assert!(result.is_ok(), "revoke T22 should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "revoke T22 should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================
@@ -224,7 +256,15 @@ fn revoke_interface_spl() {
         &instruction,
         &[
             signer_account(authority),
-            token_account_with_delegate(source_key, mint_key, authority, 1000, delegate_key, 500, token_program),
+            token_account_with_delegate(
+                source_key,
+                mint_key,
+                authority,
+                1000,
+                delegate_key,
+                500,
+                token_program,
+            ),
         ],
     );
     assert!(
@@ -254,7 +294,15 @@ fn revoke_interface_t22() {
         &instruction,
         &[
             signer_account(authority),
-            token_account_with_delegate(source_key, mint_key, authority, 1000, delegate_key, 500, token_program),
+            token_account_with_delegate(
+                source_key,
+                mint_key,
+                authority,
+                1000,
+                delegate_key,
+                500,
+                token_program,
+            ),
         ],
     );
     assert!(

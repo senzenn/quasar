@@ -3,7 +3,8 @@ use {
     quasar_spl::{Mint, Token},
 };
 
-/// No `token_program` field — program is known at compile time from Account<Token>.
+/// No `token_program` field — program is known at compile time from
+/// Account<Token>.
 #[derive(Accounts)]
 pub struct ValidateTokenNoProgram<'info> {
     #[account(token::mint = mint, token::authority = authority)]

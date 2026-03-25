@@ -33,7 +33,11 @@ fn mint_to_spl() {
             token_account(to_key, mint_key, authority, 0, token_program),
         ],
     );
-    assert!(result.is_ok(), "mint_to SPL should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "mint_to SPL should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================
@@ -65,7 +69,11 @@ fn mint_to_t22() {
             token_account(to_key, mint_key, authority, 0, token_program),
         ],
     );
-    assert!(result.is_ok(), "mint_to T22 should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "mint_to T22 should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================
@@ -165,7 +173,11 @@ fn burn_spl() {
             mint_account(mint_key, authority, 9, token_program),
         ],
     );
-    assert!(result.is_ok(), "burn SPL should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "burn SPL should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================
@@ -197,7 +209,11 @@ fn burn_t22() {
             mint_account(mint_key, authority, 9, token_program),
         ],
     );
-    assert!(result.is_ok(), "burn T22 should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "burn T22 should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================

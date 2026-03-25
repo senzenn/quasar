@@ -362,7 +362,12 @@ fn init_if_needed_ata_spl_existing_wrong_owner() {
         &instruction,
         &[
             rich_signer_account(payer),
-            raw_account(ata_key, 1_000_000, pack_token_data(mint_key, wallet, 100), Pubkey::default()),
+            raw_account(
+                ata_key,
+                1_000_000,
+                pack_token_data(mint_key, wallet, 100),
+                Pubkey::default(),
+            ),
             signer_account(wallet),
             mint_account(mint_key, mint_authority, 6, token_program),
         ],
@@ -568,7 +573,12 @@ fn init_if_needed_ata_t22_existing_wrong_owner() {
         &instruction,
         &[
             rich_signer_account(payer),
-            raw_account(ata_key, 1_000_000, pack_token_data(mint_key, wallet, 100), Pubkey::default()),
+            raw_account(
+                ata_key,
+                1_000_000,
+                pack_token_data(mint_key, wallet, 100),
+                Pubkey::default(),
+            ),
             signer_account(wallet),
             mint_account(mint_key, mint_authority, 6, token_program),
         ],

@@ -177,24 +177,8 @@ pub fn pack_mint_data(authority: Pubkey, decimals: u8) -> Vec<u8> {
     data
 }
 
-pub fn pack_mint_data_with_freeze(
-    authority: Pubkey,
-    decimals: u8,
-    freeze_authority: Pubkey,
-) -> Vec<u8> {
-    let mint = Mint {
-        mint_authority: Some(authority).into(),
-        supply: 1_000_000_000,
-        decimals,
-        is_initialized: true,
-        freeze_authority: Some(freeze_authority).into(),
-    };
-    let mut data = vec![0u8; Mint::LEN];
-    Pack::pack(mint, &mut data).unwrap();
-    data
-}
-
-/// Raw Account with custom data — for adversarial tests (wrong owner, bad data, etc.)
+/// Raw Account with custom data — for adversarial tests (wrong owner, bad data,
+/// etc.)
 pub fn raw_account(address: Pubkey, lamports: u64, data: Vec<u8>, owner: Pubkey) -> Account {
     Account {
         address,

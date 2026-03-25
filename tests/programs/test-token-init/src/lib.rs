@@ -41,7 +41,9 @@ mod quasar_test_token_init {
     }
 
     #[instruction(discriminator = 6)]
-    pub fn init_if_needed_mint_with_freeze(ctx: Ctx<InitIfNeededMintWithFreeze>) -> Result<(), ProgramError> {
+    pub fn init_if_needed_mint_with_freeze(
+        ctx: Ctx<InitIfNeededMintWithFreeze>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 
@@ -81,7 +83,9 @@ mod quasar_test_token_init {
     }
 
     #[instruction(discriminator = 14)]
-    pub fn init_if_needed_mint_with_freeze_t22(ctx: Ctx<InitIfNeededMintWithFreezeT22>) -> Result<(), ProgramError> {
+    pub fn init_if_needed_mint_with_freeze_t22(
+        ctx: Ctx<InitIfNeededMintWithFreezeT22>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 
@@ -111,7 +115,9 @@ mod quasar_test_token_init {
     }
 
     #[instruction(discriminator = 20)]
-    pub fn init_if_needed_token_interface(ctx: Ctx<InitIfNeededTokenInterface>) -> Result<(), ProgramError> {
+    pub fn init_if_needed_token_interface(
+        ctx: Ctx<InitIfNeededTokenInterface>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 
@@ -121,7 +127,9 @@ mod quasar_test_token_init {
     }
 
     #[instruction(discriminator = 22)]
-    pub fn init_if_needed_mint_interface(ctx: Ctx<InitIfNeededMintInterface>) -> Result<(), ProgramError> {
+    pub fn init_if_needed_mint_interface(
+        ctx: Ctx<InitIfNeededMintInterface>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 }

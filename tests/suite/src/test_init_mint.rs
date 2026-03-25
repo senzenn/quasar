@@ -325,7 +325,8 @@ fn init_if_needed_mint_spl_unexpected_freeze() {
     let system_program = quasar_svm::system_program::ID;
 
     // Use the no-freeze handler but provide a mint that has freeze_authority set.
-    // validate_mint with freeze_authority=None rejects mints that have one on-chain.
+    // validate_mint with freeze_authority=None rejects mints that have one
+    // on-chain.
     let instruction: Instruction = InitIfNeededMintInstruction {
         payer,
         mint: mint_key,

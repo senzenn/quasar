@@ -37,7 +37,11 @@ fn transfer_checked_spl() {
             token_account(to_key, mint_key, authority, 0, token_program),
         ],
     );
-    assert!(result.is_ok(), "transfer_checked SPL should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "transfer_checked SPL should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================
@@ -73,7 +77,11 @@ fn transfer_checked_t22() {
             token_account(to_key, mint_key, authority, 0, token_program),
         ],
     );
-    assert!(result.is_ok(), "transfer_checked T22 should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "transfer_checked T22 should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 // ===========================================================================
@@ -182,7 +190,11 @@ fn interface_transfer_spl() {
             token_account(to_key, mint_key, authority, 0, token_program),
         ],
     );
-    assert!(result.is_ok(), "interface_transfer SPL should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "interface_transfer SPL should succeed: {:?}",
+        result.raw_result
+    );
 }
 
 #[test]
@@ -211,5 +223,9 @@ fn interface_transfer_t22() {
             token_account(to_key, mint_key, authority, 0, token_program),
         ],
     );
-    assert!(result.is_ok(), "interface_transfer T22 should succeed: {:?}", result.raw_result);
+    assert!(
+        result.is_ok(),
+        "interface_transfer T22 should succeed: {:?}",
+        result.raw_result
+    );
 }

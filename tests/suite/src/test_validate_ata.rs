@@ -1,7 +1,7 @@
 use {
     crate::helpers::*,
     quasar_spl::get_associated_token_address_with_program_const,
-    quasar_svm::{Pubkey, Instruction},
+    quasar_svm::{Instruction, Pubkey},
     quasar_test_token_validate::client::*,
 };
 
@@ -147,7 +147,12 @@ fn ata_spl_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(ata_key, 1_000_000, pack_token_data(mint_key, wallet, 100), Pubkey::default()),
+            raw_account(
+                ata_key,
+                1_000_000,
+                pack_token_data(mint_key, wallet, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, authority, 6, token_program),
             signer_account(wallet),
         ],
@@ -297,7 +302,12 @@ fn ata_t22_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(ata_key, 1_000_000, pack_token_data(mint_key, wallet, 100), Pubkey::default()),
+            raw_account(
+                ata_key,
+                1_000_000,
+                pack_token_data(mint_key, wallet, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, authority, 6, token_program),
             signer_account(wallet),
         ],
@@ -447,7 +457,12 @@ fn ata_interface_spl_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(ata_key, 1_000_000, pack_token_data(mint_key, wallet, 100), Pubkey::default()),
+            raw_account(
+                ata_key,
+                1_000_000,
+                pack_token_data(mint_key, wallet, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, authority, 6, token_program),
             signer_account(wallet),
         ],
@@ -597,7 +612,12 @@ fn ata_interface_t22_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(ata_key, 1_000_000, pack_token_data(mint_key, wallet, 100), Pubkey::default()),
+            raw_account(
+                ata_key,
+                1_000_000,
+                pack_token_data(mint_key, wallet, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, authority, 6, token_program),
             signer_account(wallet),
         ],

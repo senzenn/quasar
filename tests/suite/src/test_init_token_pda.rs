@@ -18,10 +18,8 @@ fn init_token_pda_spl_happy() {
     let system_program = quasar_svm::system_program::ID;
 
     // Derive the PDA: seeds = [b"token", payer]
-    let (token_pda, _bump) = Pubkey::find_program_address(
-        &[b"token", payer.as_ref()],
-        &quasar_test_token_init::ID,
-    );
+    let (token_pda, _bump) =
+        Pubkey::find_program_address(&[b"token", payer.as_ref()], &quasar_test_token_init::ID);
 
     let instruction: Instruction = InitTokenPdaInstruction {
         payer,
@@ -94,10 +92,8 @@ fn init_token_pda_t22_happy() {
     let token_program = token_2022_program_id();
     let system_program = quasar_svm::system_program::ID;
 
-    let (token_pda, _bump) = Pubkey::find_program_address(
-        &[b"token", payer.as_ref()],
-        &quasar_test_token_init::ID,
-    );
+    let (token_pda, _bump) =
+        Pubkey::find_program_address(&[b"token", payer.as_ref()], &quasar_test_token_init::ID);
 
     let instruction: Instruction = InitTokenPdaT22Instruction {
         payer,

@@ -317,7 +317,12 @@ fn init_if_needed_token_spl_existing_wrong_owner() {
         &instruction,
         &[
             rich_signer_account(payer),
-            raw_account(token_key, 1_000_000, pack_token_data(mint_key, payer, 100), Pubkey::default()),
+            raw_account(
+                token_key,
+                1_000_000,
+                pack_token_data(mint_key, payer, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, mint_authority, 6, token_program),
         ],
     );
@@ -498,7 +503,12 @@ fn init_if_needed_token_t22_existing_wrong_owner() {
         &instruction,
         &[
             rich_signer_account(payer),
-            raw_account(token_key, 1_000_000, pack_token_data(mint_key, payer, 100), Pubkey::default()),
+            raw_account(
+                token_key,
+                1_000_000,
+                pack_token_data(mint_key, payer, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, mint_authority, 6, token_program),
         ],
     );

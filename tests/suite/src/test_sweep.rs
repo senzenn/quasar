@@ -104,10 +104,7 @@ fn sweep_spl_wrong_authority() {
             mint_account(mint_key, authority, 6, token_program),
         ],
     );
-    assert!(
-        result.is_err(),
-        "sweep SPL wrong authority should fail"
-    );
+    assert!(result.is_err(), "sweep SPL wrong authority should fail");
 }
 
 // ===========================================================================

@@ -119,9 +119,7 @@ mod quasar_test_token_cpi {
     }
 
     #[instruction(discriminator = 19)]
-    pub fn validate_token_no_program(
-        ctx: Ctx<ValidateTokenNoProgram>,
-    ) -> Result<(), ProgramError> {
+    pub fn validate_token_no_program(ctx: Ctx<ValidateTokenNoProgram>) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 
@@ -236,9 +234,7 @@ mod quasar_test_token_cpi {
     }
 
     #[instruction(discriminator = 40)]
-    pub fn sweep_and_close_interface(
-        ctx: Ctx<SweepAndCloseInterface>,
-    ) -> Result<(), ProgramError> {
+    pub fn sweep_and_close_interface(ctx: Ctx<SweepAndCloseInterface>) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 }

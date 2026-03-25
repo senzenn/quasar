@@ -15,10 +15,8 @@ fn init_mint_pda_spl_happy() {
     let token_program = spl_token_program_id();
     let system_program = quasar_svm::system_program::ID;
 
-    let (mint_pda, _bump) = Pubkey::find_program_address(
-        &[b"mint", payer.as_ref()],
-        &quasar_test_token_init::ID,
-    );
+    let (mint_pda, _bump) =
+        Pubkey::find_program_address(&[b"mint", payer.as_ref()], &quasar_test_token_init::ID);
 
     let instruction: Instruction = InitMintPdaInstruction {
         payer,
@@ -77,10 +75,8 @@ fn init_mint_pda_t22_happy() {
     let token_program = token_2022_program_id();
     let system_program = quasar_svm::system_program::ID;
 
-    let (mint_pda, _bump) = Pubkey::find_program_address(
-        &[b"mint", payer.as_ref()],
-        &quasar_test_token_init::ID,
-    );
+    let (mint_pda, _bump) =
+        Pubkey::find_program_address(&[b"mint", payer.as_ref()], &quasar_test_token_init::ID);
 
     let instruction: Instruction = InitMintPdaT22Instruction {
         payer,

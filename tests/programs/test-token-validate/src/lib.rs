@@ -21,7 +21,9 @@ mod quasar_test_token_validate {
     }
 
     #[instruction(discriminator = 2)]
-    pub fn validate_token_interface_check(ctx: Ctx<ValidateTokenInterfaceCheck>) -> Result<(), ProgramError> {
+    pub fn validate_token_interface_check(
+        ctx: Ctx<ValidateTokenInterfaceCheck>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 
@@ -36,7 +38,9 @@ mod quasar_test_token_validate {
     }
 
     #[instruction(discriminator = 5)]
-    pub fn validate_mint_interface_check(ctx: Ctx<ValidateMintInterfaceCheck>) -> Result<(), ProgramError> {
+    pub fn validate_mint_interface_check(
+        ctx: Ctx<ValidateMintInterfaceCheck>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 
@@ -51,7 +55,9 @@ mod quasar_test_token_validate {
     }
 
     #[instruction(discriminator = 8)]
-    pub fn validate_ata_interface_check(ctx: Ctx<ValidateAtaInterfaceCheck>) -> Result<(), ProgramError> {
+    pub fn validate_ata_interface_check(
+        ctx: Ctx<ValidateAtaInterfaceCheck>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 
@@ -66,17 +72,23 @@ mod quasar_test_token_validate {
     }
 
     #[instruction(discriminator = 11)]
-    pub fn validate_mint_with_freeze_check(ctx: Ctx<ValidateMintWithFreezeCheck>) -> Result<(), ProgramError> {
+    pub fn validate_mint_with_freeze_check(
+        ctx: Ctx<ValidateMintWithFreezeCheck>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 
     #[instruction(discriminator = 12)]
-    pub fn validate_mint_with_freeze_2022_check(ctx: Ctx<ValidateMintWithFreeze2022Check>) -> Result<(), ProgramError> {
+    pub fn validate_mint_with_freeze_2022_check(
+        ctx: Ctx<ValidateMintWithFreeze2022Check>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 
     #[instruction(discriminator = 13)]
-    pub fn validate_mint_with_freeze_interface_check(ctx: Ctx<ValidateMintWithFreezeInterfaceCheck>) -> Result<(), ProgramError> {
+    pub fn validate_mint_with_freeze_interface_check(
+        ctx: Ctx<ValidateMintWithFreezeInterfaceCheck>,
+    ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
 }

@@ -63,5 +63,6 @@ fn bump_is_valid() {
     let wallet = Pubkey::new_unique();
     let mint = Pubkey::new_unique();
     let (_, bump) = get_associated_token_address_const(&wallet, &mint);
-    assert!(bump <= 255);
+    // bump is a u8 so it's always <= 255; just verify we got one.
+    let _ = bump;
 }

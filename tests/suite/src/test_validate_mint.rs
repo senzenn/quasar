@@ -1,6 +1,6 @@
 use {
     crate::helpers::*,
-    quasar_svm::{Pubkey, Instruction},
+    quasar_svm::{Instruction, Pubkey},
     quasar_test_token_validate::client::*,
 };
 
@@ -98,11 +98,19 @@ fn mint_spl_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(mint_key, 1_000_000, pack_mint_data(authority, 6), Pubkey::default()),
+            raw_account(
+                mint_key,
+                1_000_000,
+                pack_mint_data(authority, 6),
+                Pubkey::default(),
+            ),
             signer_account(authority),
         ],
     );
-    assert!(result.is_err(), "should fail: account owner is wrong program");
+    assert!(
+        result.is_err(),
+        "should fail: account owner is wrong program"
+    );
 }
 
 #[test]
@@ -247,11 +255,19 @@ fn mint_t22_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(mint_key, 1_000_000, pack_mint_data(authority, 6), Pubkey::default()),
+            raw_account(
+                mint_key,
+                1_000_000,
+                pack_mint_data(authority, 6),
+                Pubkey::default(),
+            ),
             signer_account(authority),
         ],
     );
-    assert!(result.is_err(), "should fail: account owner is wrong program");
+    assert!(
+        result.is_err(),
+        "should fail: account owner is wrong program"
+    );
 }
 
 #[test]
@@ -396,11 +412,19 @@ fn mint_interface_spl_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(mint_key, 1_000_000, pack_mint_data(authority, 6), Pubkey::default()),
+            raw_account(
+                mint_key,
+                1_000_000,
+                pack_mint_data(authority, 6),
+                Pubkey::default(),
+            ),
             signer_account(authority),
         ],
     );
-    assert!(result.is_err(), "should fail: account owner is wrong program");
+    assert!(
+        result.is_err(),
+        "should fail: account owner is wrong program"
+    );
 }
 
 #[test]
@@ -545,11 +569,19 @@ fn mint_interface_t22_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(mint_key, 1_000_000, pack_mint_data(authority, 6), Pubkey::default()),
+            raw_account(
+                mint_key,
+                1_000_000,
+                pack_mint_data(authority, 6),
+                Pubkey::default(),
+            ),
             signer_account(authority),
         ],
     );
-    assert!(result.is_err(), "should fail: account owner is wrong program");
+    assert!(
+        result.is_err(),
+        "should fail: account owner is wrong program"
+    );
 }
 
 #[test]
@@ -758,7 +790,10 @@ fn mint_spl_freeze_missing_on_chain() {
             signer_account(freeze_auth),
         ],
     );
-    assert!(result.is_err(), "should fail: on-chain mint has no freeze authority");
+    assert!(
+        result.is_err(),
+        "should fail: on-chain mint has no freeze authority"
+    );
 }
 
 // ===========================================================================
@@ -845,7 +880,10 @@ fn mint_t22_freeze_missing_on_chain() {
             signer_account(freeze_auth),
         ],
     );
-    assert!(result.is_err(), "should fail: on-chain mint has no freeze authority");
+    assert!(
+        result.is_err(),
+        "should fail: on-chain mint has no freeze authority"
+    );
 }
 
 // ===========================================================================
@@ -932,7 +970,10 @@ fn mint_interface_spl_freeze_missing_on_chain() {
             signer_account(freeze_auth),
         ],
     );
-    assert!(result.is_err(), "should fail: on-chain mint has no freeze authority");
+    assert!(
+        result.is_err(),
+        "should fail: on-chain mint has no freeze authority"
+    );
 }
 
 // ===========================================================================
@@ -1019,5 +1060,8 @@ fn mint_interface_t22_freeze_missing_on_chain() {
             signer_account(freeze_auth),
         ],
     );
-    assert!(result.is_err(), "should fail: on-chain mint has no freeze authority");
+    assert!(
+        result.is_err(),
+        "should fail: on-chain mint has no freeze authority"
+    );
 }

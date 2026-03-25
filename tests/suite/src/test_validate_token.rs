@@ -1,6 +1,6 @@
 use {
     crate::helpers::*,
-    quasar_svm::{Pubkey, Instruction},
+    quasar_svm::{Instruction, Pubkey},
     quasar_test_token_validate::client::*,
 };
 
@@ -111,12 +111,20 @@ fn account_token_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(token_key, 1_000_000, pack_token_data(mint_key, authority, 100), Pubkey::default()),
+            raw_account(
+                token_key,
+                1_000_000,
+                pack_token_data(mint_key, authority, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, authority, 6, token_program),
             signer_account(authority),
         ],
     );
-    assert!(result.is_err(), "should fail: account owner is wrong program");
+    assert!(
+        result.is_err(),
+        "should fail: account owner is wrong program"
+    );
 }
 
 #[test]
@@ -279,12 +287,20 @@ fn account_token2022_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(token_key, 1_000_000, pack_token_data(mint_key, authority, 100), Pubkey::default()),
+            raw_account(
+                token_key,
+                1_000_000,
+                pack_token_data(mint_key, authority, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, authority, 6, token_program),
             signer_account(authority),
         ],
     );
-    assert!(result.is_err(), "should fail: account owner is wrong program");
+    assert!(
+        result.is_err(),
+        "should fail: account owner is wrong program"
+    );
 }
 
 #[test]
@@ -447,12 +463,20 @@ fn interface_token_spl_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(token_key, 1_000_000, pack_token_data(mint_key, authority, 100), Pubkey::default()),
+            raw_account(
+                token_key,
+                1_000_000,
+                pack_token_data(mint_key, authority, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, authority, 6, token_program),
             signer_account(authority),
         ],
     );
-    assert!(result.is_err(), "should fail: account owner is wrong program");
+    assert!(
+        result.is_err(),
+        "should fail: account owner is wrong program"
+    );
 }
 
 #[test]
@@ -615,12 +639,20 @@ fn interface_token_t22_wrong_owner() {
     let result = svm.process_instruction(
         &instruction,
         &[
-            raw_account(token_key, 1_000_000, pack_token_data(mint_key, authority, 100), Pubkey::default()),
+            raw_account(
+                token_key,
+                1_000_000,
+                pack_token_data(mint_key, authority, 100),
+                Pubkey::default(),
+            ),
             mint_account(mint_key, authority, 6, token_program),
             signer_account(authority),
         ],
     );
-    assert!(result.is_err(), "should fail: account owner is wrong program");
+    assert!(
+        result.is_err(),
+        "should fail: account owner is wrong program"
+    );
 }
 
 #[test]
