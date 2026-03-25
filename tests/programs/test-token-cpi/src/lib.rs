@@ -124,4 +124,74 @@ mod quasar_test_token_cpi {
     ) -> Result<(), ProgramError> {
         ctx.accounts.handler()
     }
+
+    #[instruction(discriminator = 20)]
+    pub fn transfer_checked_t22(
+        ctx: Ctx<TransferCheckedT22>,
+        amount: u64,
+        decimals: u8,
+    ) -> Result<(), ProgramError> {
+        ctx.accounts.handler(amount, decimals)
+    }
+
+    #[instruction(discriminator = 21)]
+    pub fn transfer_checked_interface(
+        ctx: Ctx<TransferCheckedInterface>,
+        amount: u64,
+        decimals: u8,
+    ) -> Result<(), ProgramError> {
+        ctx.accounts.handler(amount, decimals)
+    }
+
+    #[instruction(discriminator = 22)]
+    pub fn approve_t22(ctx: Ctx<ApproveT22>, amount: u64) -> Result<(), ProgramError> {
+        ctx.accounts.handler(amount)
+    }
+
+    #[instruction(discriminator = 23)]
+    pub fn approve_interface(ctx: Ctx<ApproveInterface>, amount: u64) -> Result<(), ProgramError> {
+        ctx.accounts.handler(amount)
+    }
+
+    #[instruction(discriminator = 24)]
+    pub fn revoke_t22(ctx: Ctx<RevokeT22>) -> Result<(), ProgramError> {
+        ctx.accounts.handler()
+    }
+
+    #[instruction(discriminator = 25)]
+    pub fn revoke_interface(ctx: Ctx<RevokeInterface>) -> Result<(), ProgramError> {
+        ctx.accounts.handler()
+    }
+
+    #[instruction(discriminator = 26)]
+    pub fn mint_to_t22(ctx: Ctx<MintToT22>, amount: u64) -> Result<(), ProgramError> {
+        ctx.accounts.handler(amount)
+    }
+
+    #[instruction(discriminator = 27)]
+    pub fn mint_to_interface(ctx: Ctx<MintToInterface>, amount: u64) -> Result<(), ProgramError> {
+        ctx.accounts.handler(amount)
+    }
+
+    #[instruction(discriminator = 28)]
+    pub fn burn_t22(ctx: Ctx<BurnT22>, amount: u64) -> Result<(), ProgramError> {
+        ctx.accounts.handler(amount)
+    }
+
+    #[instruction(discriminator = 29)]
+    pub fn burn_interface(ctx: Ctx<BurnInterface>, amount: u64) -> Result<(), ProgramError> {
+        ctx.accounts.handler(amount)
+    }
+
+    #[instruction(discriminator = 30)]
+    pub fn close_token_account_t22(ctx: Ctx<CloseTokenAccountT22>) -> Result<(), ProgramError> {
+        ctx.accounts.handler()
+    }
+
+    #[instruction(discriminator = 31)]
+    pub fn close_token_account_interface(
+        ctx: Ctx<CloseTokenAccountInterface>,
+    ) -> Result<(), ProgramError> {
+        ctx.accounts.handler()
+    }
 }
