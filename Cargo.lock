@@ -2222,6 +2222,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "quasar-svm"
+version = "0.1.0"
+source = "git+https://github.com/blueshift-gg/quasar-svm#cf3c06a08a9009631d42d7942a574da1eac6104d"
+dependencies = [
+ "agave-feature-set",
+ "agave-syscalls",
+ "bincode",
+ "solana-account",
+ "solana-bpf-loader-program",
+ "solana-clock",
+ "solana-compute-budget",
+ "solana-epoch-rewards",
+ "solana-epoch-schedule",
+ "solana-hash 3.1.0",
+ "solana-instruction",
+ "solana-instruction-error",
+ "solana-instructions-sysvar",
+ "solana-loader-v3-interface",
+ "solana-message",
+ "solana-precompile-error",
+ "solana-program-pack",
+ "solana-program-runtime",
+ "solana-pubkey 4.1.0",
+ "solana-rent",
+ "solana-sdk-ids",
+ "solana-slot-hashes",
+ "solana-stake-interface",
+ "solana-svm-callback",
+ "solana-svm-log-collector",
+ "solana-svm-timings",
+ "solana-svm-transaction",
+ "solana-system-program",
+ "solana-sysvar",
+ "solana-sysvar-id",
+ "solana-transaction-context",
+ "solana-transaction-error",
+ "spl-token",
+]
+
+[[package]]
 name = "quasar-test-errors"
 version = "0.1.0"
 dependencies = [
@@ -2257,12 +2297,15 @@ dependencies = [
  "mollusk-svm-programs-token",
  "quasar-lang",
  "quasar-spl",
+ "quasar-svm",
  "quasar-test-errors",
  "quasar-test-events",
  "quasar-test-misc",
  "quasar-test-pda",
  "quasar-test-sysvar",
  "quasar-test-token-cpi",
+ "quasar-test-token-init",
+ "quasar-test-token-validate",
  "solana-account",
  "solana-address 2.3.0",
  "solana-instruction",
@@ -2279,6 +2322,22 @@ dependencies = [
 
 [[package]]
 name = "quasar-test-token-cpi"
+version = "0.1.0"
+dependencies = [
+ "quasar-lang",
+ "quasar-spl",
+]
+
+[[package]]
+name = "quasar-test-token-init"
+version = "0.1.0"
+dependencies = [
+ "quasar-lang",
+ "quasar-spl",
+]
+
+[[package]]
+name = "quasar-test-token-validate"
 version = "0.1.0"
 dependencies = [
  "quasar-lang",
@@ -3718,6 +3777,34 @@ checksum = "e6433917b60441d68d99a17e121d9db0ea15a9a69c0e5afa34649cf5ba12612f"
 dependencies = [
  "solana-instruction",
  "solana-pubkey 3.0.0",
+]
+
+[[package]]
+name = "spl-token"
+version = "9.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "878b0183d51fcd8a53e1604f4c13321894cf53227e6773c529b0d03d499a8dfd"
+dependencies = [
+ "arrayref",
+ "bytemuck",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-account-info",
+ "solana-cpi",
+ "solana-instruction",
+ "solana-msg",
+ "solana-program-entrypoint",
+ "solana-program-error",
+ "solana-program-memory",
+ "solana-program-option",
+ "solana-program-pack",
+ "solana-pubkey 3.0.0",
+ "solana-rent",
+ "solana-sdk-ids",
+ "solana-sysvar",
+ "spl-token-interface",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

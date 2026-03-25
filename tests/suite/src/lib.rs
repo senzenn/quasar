@@ -29,3 +29,29 @@ mod sysvar;
 mod token_cpi;
 #[cfg(test)]
 mod token_state;
+
+// QuasarSVM-based SPL test suite
+#[cfg(test)]
+mod helpers;
+#[cfg(test)]
+mod test_validate_token;
+#[cfg(test)]
+mod test_validate_mint;
+#[cfg(test)]
+mod test_validate_ata;
+#[cfg(test)]
+mod test_init_token;
+#[cfg(test)]
+mod test_init_ata;
+#[cfg(test)]
+mod test_init_mint;
+#[cfg(test)]
+mod test_cpi_transfer;
+#[cfg(test)]
+mod test_cpi_approve_revoke;
+#[cfg(test)]
+mod test_cpi_mint_burn;
+#[cfg(test)]
+mod test_cpi_close;
+#[cfg(test)]
+mod test_ata_derivation;
