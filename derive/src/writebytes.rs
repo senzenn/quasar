@@ -4,8 +4,8 @@
 //! 1. An `InstructionArg` impl with an alignment-1 ZC companion struct,
 //!    enabling zero-copy deserialization inside `#[instruction]` handlers.
 //!
-//! 2. A `WriteBytes` impl (gated behind `cfg(not(solana))`) for off-chain
-//!    instruction data serialization.
+//! 2. Wincode `SchemaWrite` and `SchemaRead` impls (gated behind
+//!    `cfg(not(solana))`) for off-chain instruction data serialization.
 
 use {
     proc_macro::TokenStream,
@@ -64,16 +64,6 @@ pub(crate) fn derive_write_bytes(input: TokenStream) -> TokenStream {
         })
         .collect();
 
-    // WriteBytes field writes (off-chain only)
-    let field_writes: Vec<_> = field_names
-        .iter()
-        .map(|field_name| {
-            quote! {
-                quasar_lang::client::WriteBytes::write_bytes(&self.#field_name, buf);
-            }
-        })
-        .collect();
-
     let expanded = quote! {
         // Alignment-1 ZC companion for zero-copy instruction deserialization.
         #[doc(hidden)]
@@ -95,12 +85,47 @@ pub(crate) fn derive_write_bytes(input: TokenStream) -> TokenStream {
             }
         }
 
-        // WriteBytes impl (off-chain only)
+        // Wincode SchemaWrite + SchemaRead (off-chain only)
         #[cfg(not(any(target_os = "solana", target_arch = "bpf")))]
-        impl #impl_generics quasar_lang::client::WriteBytes for #name #ty_generics #where_clause {
-            #[inline(always)]
-            fn write_bytes(&self, buf: &mut ::alloc::vec::Vec<u8>) {
-                #(#field_writes)*
+        unsafe impl<__C: wincode::config::ConfigCore> wincode::SchemaWrite<__C>
+            for #name #ty_generics #where_clause
+        {
+            type Src = Self;
+
+            fn size_of(src: &Self) -> wincode::error::WriteResult<usize> {
+                let mut __total = 0usize;
+                #(
+                    __total += <#field_types as wincode::SchemaWrite<__C>>::size_of(&src.#field_names)?;
+                )*
+                Ok(__total)
+            }
+
+            fn write(mut __writer: impl wincode::io::Writer, src: &Self) -> wincode::error::WriteResult<()> {
+                #(
+                    <#field_types as wincode::SchemaWrite<__C>>::write(__writer.by_ref(), &src.#field_names)?;
+                )*
+                Ok(())
+            }
+        }
+
+        #[cfg(not(any(target_os = "solana", target_arch = "bpf")))]
+        unsafe impl<'__de, __C: wincode::config::ConfigCore> wincode::SchemaRead<'__de, __C>
+            for #name #ty_generics #where_clause
+        {
+            type Dst = Self;
+
+            fn read(
+                mut __reader: impl wincode::io::Reader<'__de>,
+                __dst: &mut core::mem::MaybeUninit<Self>,
+            ) -> wincode::error::ReadResult<()> {
+                let __ptr = __dst.as_mut_ptr();
+                #(
+                    <#field_types as wincode::SchemaRead<'__de, __C>>::read(
+                        __reader.by_ref(),
+                        unsafe { &mut *core::ptr::addr_of_mut!((*__ptr).#field_names).cast() },
+                    )?;
+                )*
+                Ok(())
             }
         }
     };

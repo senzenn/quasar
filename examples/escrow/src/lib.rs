@@ -5,8 +5,6 @@ use quasar_lang::prelude::*;
 mod instructions;
 use instructions::*;
 mod events;
-#[cfg(test)]
-mod idl_client;
 mod state;
 #[cfg(test)]
 mod tests;

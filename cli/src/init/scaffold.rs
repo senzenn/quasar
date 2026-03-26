@@ -369,11 +369,12 @@ fn generate_package_json(name: &str, ts_sdk: TypeScriptSdk) -> String {
     "test": "vitest run"
   }},
   "dependencies": {{
-    "@blueshift-gg/quasar-svm": "^0.1.11",
+    "@blueshift-gg/quasar-svm": "^0.1.12",
+    "@solana/codecs": "^6.0.0",
     {solana_dep}
   }},
   "devDependencies": {{
-    "@types/node": "^22.0.0",
+    "@types/node": "^22.13.0",
     "typescript": "^5.9.3",
     "vitest": "^3.1.0"
   }}
@@ -401,10 +402,10 @@ import {{ readFile }} from "node:fs/promises";
 const {class_name}Program = new {class_name}Client();
 
 describe.concurrent("{class_name} Program", async () => {{
-  const vm = new QuasarSvm();
-  vm.addProgram(PROGRAM_ADDRESS, await readFile("target/deploy/{so_name}.so"));
-
   it("initializes", async () => {{
+    const vm = new QuasarSvm();
+    vm.addProgram(PROGRAM_ADDRESS, await readFile("target/deploy/{so_name}.so"));
+
     const payer = await generateKeyPairSigner();
 
     const initializeInstruction = {class_name}Program.createInitializeInstruction({{
@@ -431,10 +432,10 @@ import {{ QuasarSvm, createKeyedSystemAccount }} from "@blueshift-gg/quasar-svm/
 const {class_name}Program = new {class_name}Client();
 
 describe.concurrent("{class_name} Program", async () => {{
-  const vm = new QuasarSvm();
-  vm.addProgram({class_name}Client.programId, await readFile("target/deploy/{so_name}.so"));
-
   it("initializes", async () => {{
+    const vm = new QuasarSvm();
+    vm.addProgram({class_name}Client.programId, await readFile("target/deploy/{so_name}.so"));
+
     const {{ publicKey: payer }} = await Keypair.generate();
 
     const initializeInstruction = {class_name}Program.createInitializeInstruction({{

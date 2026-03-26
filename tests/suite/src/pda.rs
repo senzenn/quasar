@@ -1,6 +1,6 @@
 use {
     mollusk_svm::{program::keyed_account_for_system_program, Mollusk},
-    quasar_test_pda::client::*,
+    quasar_test_pda::cpi::*,
     solana_account::Account,
     solana_address::Address,
     solana_instruction::Instruction,

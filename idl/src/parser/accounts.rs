@@ -23,10 +23,12 @@ pub struct RawAccountField {
     pub address: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct RawPda {
     pub seeds: Vec<RawSeed>,
 }
 
+#[derive(Clone)]
 pub enum RawSeed {
     ByteString(Vec<u8>),
     AccountRef(String),

@@ -1,94 +1,72 @@
 extern crate std;
 use {
-    crate::idl_client::{
-        CreateInstruction, DepositInstruction, ExecuteTransferInstruction, SetLabelInstruction,
-    },
-    alloc::{vec, vec::Vec},
-    mollusk_svm::{program::keyed_account_for_system_program, Mollusk},
-    solana_account::Account,
-    solana_address::Address,
-    solana_instruction::{AccountMeta, Instruction},
+    alloc::vec,
+    quasar_lang::client::{DynBytes, DynVec},
+    quasar_multisig_client::*,
+    quasar_svm::{Account, Instruction, Pubkey, QuasarSvm},
+    solana_instruction::AccountMeta,
     std::println,
 };
 
-fn setup() -> Mollusk {
-    Mollusk::new(&crate::ID, "../../target/deploy/quasar_multisig")
+fn setup() -> QuasarSvm {
+    let elf = std::fs::read("../../target/deploy/quasar_multisig.so").unwrap();
+    QuasarSvm::new().with_program(&crate::ID, &elf)
 }
 
-fn build_config_data(
-    creator: Address,
-    threshold: u8,
-    bump: u8,
-    label: &str,
-    signers: &[Address],
-) -> Vec<u8> {
-    build_config_data_bytes(creator, threshold, bump, label.as_bytes(), signers)
+fn signer(address: Pubkey) -> Account {
+    quasar_svm::token::create_keyed_system_account(&address, 10_000_000_000)
 }
 
-fn build_config_data_bytes(
-    creator: Address,
+fn empty(address: Pubkey) -> Account {
+    Account {
+        address,
+        lamports: 0,
+        data: vec![],
+        owner: quasar_svm::system_program::ID,
+        executable: false,
+    }
+}
+
+fn config_account(
+    address: Pubkey,
+    creator: Pubkey,
     threshold: u8,
     bump: u8,
     label: &[u8],
-    signers: &[Address],
-) -> Vec<u8> {
-    // Layout: disc(1) + ZC fixed(34) + label_prefix(u32) + label_data +
-    // signers_prefix(u32) + signers_data
-    let total = 1 + 34 + 4 + label.len() + 4 + signers.len() * 32;
-    let mut data = vec![0u8; total];
-
-    // Discriminator
-    data[0] = 1;
-
-    // ZC fixed fields at offset 1
-    data[1..33].copy_from_slice(creator.as_ref());
-    data[33] = threshold;
-    data[34] = bump;
-
-    // Label prefix (u32 LE): byte length
-    let label_len = label.len() as u32;
-    data[35..39].copy_from_slice(&label_len.to_le_bytes());
-    // Label data
-    data[39..39 + label.len()].copy_from_slice(label);
-
-    // Signers prefix (u32 LE): element count
-    let signers_offset = 39 + label.len();
-    let signers_count = signers.len() as u32;
-    data[signers_offset..signers_offset + 4].copy_from_slice(&signers_count.to_le_bytes());
-    // Signers data
-    let signers_data_start = signers_offset + 4;
-    for (i, signer) in signers.iter().enumerate() {
-        data[signers_data_start + i * 32..signers_data_start + (i + 1) * 32]
-            .copy_from_slice(signer.as_ref());
+    signers: &[Pubkey],
+) -> Account {
+    let config = MultisigConfig {
+        creator,
+        threshold,
+        bump,
+        label: DynBytes::new(label.to_vec()),
+        signers: DynVec::new(signers.to_vec()),
+    };
+    Account {
+        address,
+        lamports: 1_000_000,
+        data: wincode::serialize(&config).unwrap(),
+        owner: crate::ID,
+        executable: false,
     }
-
-    data
 }
 
 #[test]
 fn test_create() {
-    let mollusk = setup();
+    let mut svm = setup();
 
-    let (system_program, system_program_account) = keyed_account_for_system_program();
-    let (rent, rent_account) = mollusk.sysvars.keyed_account_for_rent_sysvar();
-
-    let creator = Address::new_unique();
-    let creator_account = Account::new(10_000_000_000, 0, &system_program);
-
-    let (config, _config_bump) =
-        Address::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
-    let config_account = Account::default();
-
-    let signer1 = Address::new_unique();
-    let signer1_account = Account::default();
-    let signer2 = Address::new_unique();
-    let signer2_account = Account::default();
-    let signer3 = Address::new_unique();
-    let signer3_account = Account::default();
+    let system_program = quasar_svm::system_program::ID;
+    let creator = Pubkey::new_unique();
+    let signer1 = Pubkey::new_unique();
+    let signer2 = Pubkey::new_unique();
+    let signer3 = Pubkey::new_unique();
+    let (config, _) = Pubkey::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
 
     let threshold: u8 = 2;
 
-    // Build instruction with remaining accounts for signers
+    // Rent sysvar address
+    let rent = quasar_svm::solana_sdk_ids::sysvar::rent::ID;
+
     let instruction: Instruction = CreateInstruction {
         creator,
         config,
@@ -103,34 +81,26 @@ fn test_create() {
     }
     .into();
 
-    let result = mollusk.process_instruction(
+    let result = svm.process_instruction(
         &instruction,
         &[
-            (creator, creator_account),
-            (config, config_account),
-            (rent, rent_account),
-            (system_program, system_program_account),
-            (signer1, signer1_account),
-            (signer2, signer2_account),
-            (signer3, signer3_account),
+            signer(creator),
+            empty(config),
+            empty(signer1),
+            empty(signer2),
+            empty(signer3),
         ],
     );
 
-    assert!(
-        result.program_result.is_ok(),
-        "create failed: {:?}",
-        result.program_result
-    );
+    assert!(result.is_ok(), "create failed: {:?}", result.raw_result);
 
     // Verify config account data
-    let config_data = &result.resulting_accounts[1].1.data;
+    let config_data = &result.account(&config).unwrap().data;
     assert_eq!(config_data[0], 1, "discriminator should be 1");
-
-    // Verify threshold (offset: disc(1) + creator(32) = 33)
     assert_eq!(config_data[33], threshold, "threshold mismatch");
 
-    // Verify signers count prefix (offset: disc(1) + ZC(34) + label_prefix(4) +
-    // label(0) = 39)
+    // Signers count prefix at offset 39 (disc(1) + ZC(34) + label_prefix(4) +
+    // label(0))
     let signers_count = u32::from_le_bytes([
         config_data[39],
         config_data[40],
@@ -139,37 +109,22 @@ fn test_create() {
     ]);
     assert_eq!(signers_count, 3, "signers count should be 3");
 
-    println!("\n========================================");
     println!("  CREATE CU: {}", result.compute_units_consumed);
-    println!("========================================\n");
 }
 
 #[test]
 fn test_deposit() {
-    let mollusk = setup();
-    let (system_program, system_program_account) = keyed_account_for_system_program();
+    let mut svm = setup();
 
-    let creator = Address::new_unique();
-    let signer1 = Address::new_unique();
-    let signer2 = Address::new_unique();
+    let system_program = quasar_svm::system_program::ID;
+    let creator = Pubkey::new_unique();
+    let signer1 = Pubkey::new_unique();
+    let signer2 = Pubkey::new_unique();
+    let depositor = Pubkey::new_unique();
 
     let (config, config_bump) =
-        Address::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
-    let config_data = build_config_data(creator, 2, config_bump, "", &[signer1, signer2]);
-    let config_account = Account {
-        lamports: 1_000_000,
-        data: config_data,
-        owner: crate::ID,
-        executable: false,
-        rent_epoch: 0,
-    };
-
-    let (vault, _vault_bump) =
-        Address::find_program_address(&[b"vault", config.as_ref()], &crate::ID);
-    let vault_account = Account::new(0, 0, &system_program);
-
-    let depositor = Address::new_unique();
-    let depositor_account = Account::new(10_000_000_000, 0, &system_program);
+        Pubkey::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
+    let (vault, _) = Pubkey::find_program_address(&[b"vault", config.as_ref()], &crate::ID);
 
     let deposit_amount: u64 = 1_000_000_000;
 
@@ -182,50 +137,32 @@ fn test_deposit() {
     }
     .into();
 
-    let result = mollusk.process_instruction(
+    let result = svm.process_instruction(
         &instruction,
         &[
-            (depositor, depositor_account),
-            (config, config_account),
-            (vault, vault_account),
-            (system_program, system_program_account),
+            signer(depositor),
+            config_account(config, creator, 2, config_bump, b"", &[signer1, signer2]),
+            empty(vault),
         ],
     );
 
-    assert!(
-        result.program_result.is_ok(),
-        "deposit failed: {:?}",
-        result.program_result
-    );
+    assert!(result.is_ok(), "deposit failed: {:?}", result.raw_result);
 
-    let vault_after = result.resulting_accounts[2].1.lamports;
+    let vault_after = result.account(&vault).unwrap().lamports;
     assert_eq!(vault_after, deposit_amount, "vault lamports after deposit");
 
-    println!("\n========================================");
     println!("  DEPOSIT CU: {}", result.compute_units_consumed);
-    println!("========================================\n");
 }
 
 #[test]
 fn test_set_label() {
-    let mollusk = setup();
-    let (system_program, system_program_account) = keyed_account_for_system_program();
+    let mut svm = setup();
 
-    let creator = Address::new_unique();
-    let creator_account = Account::new(10_000_000_000, 0, &system_program);
-
-    let signer1 = Address::new_unique();
-
+    let system_program = quasar_svm::system_program::ID;
+    let creator = Pubkey::new_unique();
+    let signer1 = Pubkey::new_unique();
     let (config, config_bump) =
-        Address::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
-    let config_data = build_config_data(creator, 1, config_bump, "", &[signer1]);
-    let config_account = Account {
-        lamports: 1_000_000,
-        data: config_data,
-        owner: crate::ID,
-        executable: false,
-        rent_epoch: 0,
-    };
+        Pubkey::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
 
     let label = "Treasury";
 
@@ -233,28 +170,22 @@ fn test_set_label() {
         creator,
         config,
         system_program,
-        label: label.as_bytes().to_vec(),
+        label: DynBytes::new(label.as_bytes().to_vec()),
     }
     .into();
 
-    let result = mollusk.process_instruction(
+    let result = svm.process_instruction(
         &instruction,
         &[
-            (creator, creator_account),
-            (config, config_account),
-            (system_program, system_program_account),
+            signer(creator),
+            config_account(config, creator, 1, config_bump, b"", &[signer1]),
         ],
     );
 
-    assert!(
-        result.program_result.is_ok(),
-        "set_label failed: {:?}",
-        result.program_result
-    );
+    assert!(result.is_ok(), "set_label failed: {:?}", result.raw_result);
 
     // Verify label was stored
-    let config_data = &result.resulting_accounts[1].1.data;
-    // Label prefix at offset 35 (disc(1) + ZC(34))
+    let config_data = &result.account(&config).unwrap().data;
     let label_len = u32::from_le_bytes([
         config_data[35],
         config_data[36],
@@ -263,51 +194,29 @@ fn test_set_label() {
     ]) as usize;
     assert_eq!(label_len, label.len(), "label length mismatch");
 
-    let label_start = 39; // disc(1) + ZC(34) + label_prefix(4)
-    let stored_label = core::str::from_utf8(&config_data[label_start..label_start + label_len])
-        .expect("invalid UTF-8");
+    let stored_label = core::str::from_utf8(&config_data[39..39 + label_len]).unwrap();
     assert_eq!(stored_label, label, "label content mismatch");
 
-    println!("\n========================================");
     println!("  SET_LABEL CU: {}", result.compute_units_consumed);
-    println!("========================================\n");
 }
 
 #[test]
 fn test_execute_transfer() {
-    let mollusk = setup();
-    let (system_program, system_program_account) = keyed_account_for_system_program();
+    let mut svm = setup();
 
-    let creator = Address::new_unique();
-    let creator_account = Account::default();
-
-    let signer1 = Address::new_unique();
-    let signer1_account = Account::default();
-    let signer2 = Address::new_unique();
-    let signer2_account = Account::default();
-    let signer3 = Address::new_unique();
+    let system_program = quasar_svm::system_program::ID;
+    let creator = Pubkey::new_unique();
+    let signer1 = Pubkey::new_unique();
+    let signer2 = Pubkey::new_unique();
+    let signer3 = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
 
     let (config, config_bump) =
-        Address::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
-    let config_data = build_config_data(creator, 2, config_bump, "", &[signer1, signer2, signer3]);
-    let config_account = Account {
-        lamports: 1_000_000,
-        data: config_data,
-        owner: crate::ID,
-        executable: false,
-        rent_epoch: 0,
-    };
-
-    let (vault, _vault_bump) =
-        Address::find_program_address(&[b"vault", config.as_ref()], &crate::ID);
-    let vault_account = Account::new(5_000_000_000, 0, &system_program);
-
-    let recipient = Address::new_unique();
-    let recipient_account = Account::new(0, 0, &system_program);
+        Pubkey::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
+    let (vault, _) = Pubkey::find_program_address(&[b"vault", config.as_ref()], &crate::ID);
 
     let transfer_amount: u64 = 1_000_000_000;
 
-    // Build instruction with 2 signers as remaining accounts (meets threshold of 2)
     let instruction: Instruction = ExecuteTransferInstruction {
         config,
         creator,
@@ -322,31 +231,45 @@ fn test_execute_transfer() {
     }
     .into();
 
-    let result = mollusk.process_instruction(
+    let vault_initial = 5_000_000_000u64;
+
+    let result = svm.process_instruction(
         &instruction,
         &[
-            (config, config_account),
-            (creator, creator_account),
-            (vault, vault_account),
-            (recipient, recipient_account),
-            (system_program, system_program_account.clone()),
-            (signer1, signer1_account),
-            (signer2, signer2_account),
+            config_account(
+                config,
+                creator,
+                2,
+                config_bump,
+                b"",
+                &[signer1, signer2, signer3],
+            ),
+            empty(creator),
+            Account {
+                address: vault,
+                lamports: vault_initial,
+                data: vec![],
+                owner: quasar_svm::system_program::ID,
+                executable: false,
+            },
+            empty(recipient),
+            empty(signer1),
+            empty(signer2),
         ],
     );
 
     assert!(
-        result.program_result.is_ok(),
+        result.is_ok(),
         "execute_transfer failed: {:?}",
-        result.program_result
+        result.raw_result
     );
 
-    let vault_after = result.resulting_accounts[2].1.lamports;
-    let recipient_after = result.resulting_accounts[3].1.lamports;
+    let vault_after = result.account(&vault).unwrap().lamports;
+    let recipient_after = result.account(&recipient).unwrap().lamports;
 
     assert_eq!(
         vault_after,
-        5_000_000_000 - transfer_amount,
+        vault_initial - transfer_amount,
         "vault lamports after transfer"
     );
     assert_eq!(
@@ -354,41 +277,23 @@ fn test_execute_transfer() {
         "recipient lamports after transfer"
     );
 
-    println!("\n========================================");
     println!("  EXECUTE_TRANSFER CU: {}", result.compute_units_consumed);
-    println!("========================================\n");
 }
 
 #[test]
 fn test_execute_transfer_insufficient_signers() {
-    let mollusk = setup();
-    let (system_program, system_program_account) = keyed_account_for_system_program();
+    let mut svm = setup();
 
-    let creator = Address::new_unique();
-    let creator_account = Account::default();
-
-    let signer1 = Address::new_unique();
-    let signer1_account = Account::default();
-    let signer2 = Address::new_unique();
-    let signer3 = Address::new_unique();
+    let system_program = quasar_svm::system_program::ID;
+    let creator = Pubkey::new_unique();
+    let signer1 = Pubkey::new_unique();
+    let signer2 = Pubkey::new_unique();
+    let signer3 = Pubkey::new_unique();
+    let recipient = Pubkey::new_unique();
 
     let (config, config_bump) =
-        Address::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
-    let config_data = build_config_data(creator, 2, config_bump, "", &[signer1, signer2, signer3]);
-    let config_account = Account {
-        lamports: 1_000_000,
-        data: config_data,
-        owner: crate::ID,
-        executable: false,
-        rent_epoch: 0,
-    };
-
-    let (vault, _vault_bump) =
-        Address::find_program_address(&[b"vault", config.as_ref()], &crate::ID);
-    let vault_account = Account::new(5_000_000_000, 0, &system_program);
-
-    let recipient = Address::new_unique();
-    let recipient_account = Account::new(0, 0, &system_program);
+        Pubkey::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
+    let (vault, _) = Pubkey::find_program_address(&[b"vault", config.as_ref()], &crate::ID);
 
     // Only 1 signer — threshold is 2, should fail
     let instruction: Instruction = ExecuteTransferInstruction {
@@ -402,54 +307,46 @@ fn test_execute_transfer_insufficient_signers() {
     }
     .into();
 
-    let result = mollusk.process_instruction(
+    let result = svm.process_instruction(
         &instruction,
         &[
-            (config, config_account),
-            (creator, creator_account),
-            (vault, vault_account),
-            (recipient, recipient_account),
-            (system_program, system_program_account),
-            (signer1, signer1_account),
+            config_account(
+                config,
+                creator,
+                2,
+                config_bump,
+                b"",
+                &[signer1, signer2, signer3],
+            ),
+            empty(creator),
+            Account {
+                address: vault,
+                lamports: 5_000_000_000,
+                data: vec![],
+                owner: quasar_svm::system_program::ID,
+                executable: false,
+            },
+            empty(recipient),
+            empty(signer1),
         ],
     );
 
-    assert!(
-        result.program_result.is_err(),
-        "should fail with insufficient signers"
-    );
-
-    println!("\n========================================");
+    assert!(result.is_err(), "should fail with insufficient signers");
     println!("  INSUFFICIENT_SIGNERS: correctly rejected");
-    println!("========================================\n");
 }
 
 #[test]
 fn test_invalid_utf8_label_rejected() {
-    let mollusk = setup();
+    let mut svm = setup();
 
-    let creator = Address::new_unique();
-    let signer1 = Address::new_unique();
+    let system_program = quasar_svm::system_program::ID;
+    let creator = Pubkey::new_unique();
+    let signer1 = Pubkey::new_unique();
+    let depositor = Pubkey::new_unique();
 
     let (config, config_bump) =
-        Address::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
-    let config_data = build_config_data_bytes(creator, 1, config_bump, &[0xFF, 0xFE], &[signer1]);
-    let config_account = Account {
-        lamports: 1_000_000,
-        data: config_data,
-        owner: crate::ID,
-        executable: false,
-        rent_epoch: 0,
-    };
-
-    let depositor = Address::new_unique();
-    let depositor_account = Account::new(10_000_000_000, 0, &Address::default());
-
-    let (vault, _vault_bump) =
-        Address::find_program_address(&[b"vault", config.as_ref()], &crate::ID);
-    let vault_account = Account::new(0, 0, &Address::default());
-
-    let (system_program, system_program_account) = keyed_account_for_system_program();
+        Pubkey::find_program_address(&[b"multisig", creator.as_ref()], &crate::ID);
+    let (vault, _) = Pubkey::find_program_address(&[b"vault", config.as_ref()], &crate::ID);
 
     let instruction: Instruction = DepositInstruction {
         depositor,
@@ -460,18 +357,17 @@ fn test_invalid_utf8_label_rejected() {
     }
     .into();
 
-    let result = mollusk.process_instruction(
+    let result = svm.process_instruction(
         &instruction,
         &[
-            (depositor, depositor_account),
-            (config, config_account),
-            (vault, vault_account),
-            (system_program, system_program_account),
+            signer(depositor),
+            config_account(config, creator, 1, config_bump, &[0xFF, 0xFE], &[signer1]),
+            empty(vault),
         ],
     );
 
     assert!(
-        result.program_result.is_err(),
+        result.is_err(),
         "invalid UTF-8 label in config account should be rejected"
     );
 }

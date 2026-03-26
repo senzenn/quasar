@@ -81,6 +81,7 @@ pub(super) const TS_TEST_TSCONFIG: &str = r#"{
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "types": ["node"]
   },

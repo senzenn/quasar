@@ -2137,15 +2137,25 @@ dependencies = [
 name = "quasar-escrow"
 version = "0.1.0"
 dependencies = [
- "mollusk-svm",
- "mollusk-svm-programs-token",
+ "quasar-escrow-client",
  "quasar-lang",
  "quasar-spl",
- "solana-account",
+ "quasar-svm",
  "solana-address 2.3.0",
  "solana-instruction",
  "solana-program-pack",
  "spl-token-interface",
+ "wincode",
+]
+
+[[package]]
+name = "quasar-escrow-client"
+version = "0.1.0"
+dependencies = [
+ "quasar-lang",
+ "solana-address 2.3.0",
+ "solana-instruction",
+ "wincode",
 ]
 
 [[package]]
@@ -2174,17 +2184,29 @@ dependencies = [
  "solana-program-error",
  "solana-program-log",
  "trybuild",
+ "wincode",
 ]
 
 [[package]]
 name = "quasar-multisig"
 version = "0.1.0"
 dependencies = [
- "mollusk-svm",
  "quasar-lang",
- "solana-account",
+ "quasar-multisig-client",
+ "quasar-svm",
  "solana-address 2.3.0",
  "solana-instruction",
+ "wincode",
+]
+
+[[package]]
+name = "quasar-multisig-client"
+version = "0.1.0"
+dependencies = [
+ "quasar-lang",
+ "solana-address 2.3.0",
+ "solana-instruction",
+ "wincode",
 ]
 
 [[package]]
@@ -2348,10 +2370,19 @@ dependencies = [
 name = "quasar-vault"
 version = "0.1.0"
 dependencies = [
- "mollusk-svm",
  "quasar-lang",
- "solana-account",
+ "quasar-svm",
+ "quasar-vault-client",
+]
+
+[[package]]
+name = "quasar-vault-client"
+version = "0.1.0"
+dependencies = [
+ "quasar-lang",
+ "solana-address 2.3.0",
  "solana-instruction",
+ "wincode",
 ]
 
 [[package]]
@@ -4122,11 +4153,20 @@ dependencies = [
 name = "upstream-vault"
 version = "0.1.0"
 dependencies = [
- "mollusk-svm",
  "quasar-lang",
- "solana-account",
+ "quasar-svm",
+ "solana-address 2.3.0",
+ "upstream-vault-client",
+]
+
+[[package]]
+name = "upstream-vault-client"
+version = "0.1.0"
+dependencies = [
+ "quasar-lang",
  "solana-address 2.3.0",
  "solana-instruction",
+ "wincode",
 ]
 
 [[package]]

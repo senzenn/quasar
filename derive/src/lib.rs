@@ -181,10 +181,12 @@ pub fn emit_cpi(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Derive off-chain instruction data serialization.
+/// Derive off-chain instruction data serialization and deserialization.
 ///
-/// Generates a `WriteBytes` impl that serializes each field in declaration
-/// order. Only compiled for non-SBF targets (off-chain clients).
+/// Generates wincode `SchemaWrite` and `SchemaRead` impls that
+/// serialize/deserialize each field in declaration order. Only compiled for
+/// non-SBF targets (off-chain clients). Also generates an `InstructionArg`
+/// impl with a ZC companion struct for on-chain zero-copy deserialization.
 ///
 /// # Syntax
 ///
@@ -197,7 +199,7 @@ pub fn emit_cpi(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// All field types must themselves implement `WriteBytes`.
+/// All field types must implement wincode's `SchemaWrite` and `SchemaRead`.
 #[proc_macro_derive(QuasarSerialize)]
 pub fn derive_quasar_serialize(input: TokenStream) -> TokenStream {
     writebytes::derive_write_bytes(input)

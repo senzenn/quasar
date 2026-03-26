@@ -70,10 +70,16 @@ pub(super) fn generate_client_macro(
                         let accounts = ::alloc::vec![
                             {account_metas}
                         ];
-                        let data = quasar_lang::client::build_instruction_data(
-                            &[$($disc),*],
-                            |_data| {{ $(quasar_lang::client::WriteBytes::write_bytes(&ix.$arg_name, _data);)* }}
-                        );
+                        let data = {{
+                            let mut _data = ::alloc::vec![$($disc),*];
+                            $(
+                                _data.extend_from_slice(
+                                    &quasar_lang::client::wincode::serialize(&ix.$arg_name)
+                                        .expect("instruction arg serialization")
+                                );
+                            )*
+                            _data
+                        }};
                         quasar_lang::client::Instruction {{
                             program_id: $crate::ID,
                             accounts,
@@ -95,10 +101,16 @@ pub(super) fn generate_client_macro(
                             {account_metas}
                         ];
                         accounts.extend(ix.remaining_accounts);
-                        let data = quasar_lang::client::build_instruction_data(
-                            &[$($disc),*],
-                            |_data| {{ $(quasar_lang::client::WriteBytes::write_bytes(&ix.$arg_name, _data);)* }}
-                        );
+                        let data = {{
+                            let mut _data = ::alloc::vec![$($disc),*];
+                            $(
+                                _data.extend_from_slice(
+                                    &quasar_lang::client::wincode::serialize(&ix.$arg_name)
+                                        .expect("instruction arg serialization")
+                                );
+                            )*
+                            _data
+                        }};
                         quasar_lang::client::Instruction {{
                             program_id: $crate::ID,
                             accounts,

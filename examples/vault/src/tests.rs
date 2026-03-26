@@ -1,29 +1,36 @@
 extern crate std;
 use {
-    crate::idl_client::{DepositInstruction, WithdrawInstruction},
-    mollusk_svm::{program::keyed_account_for_system_program, Mollusk},
-    quasar_lang::prelude::*,
-    solana_account::Account,
-    solana_instruction::Instruction,
-    std::println,
+    quasar_svm::{Account, Instruction, Pubkey, QuasarSvm},
+    quasar_vault_client::*,
+    std::{println, vec},
 };
 
-fn setup() -> Mollusk {
-    Mollusk::new(&crate::ID, "../../target/deploy/quasar_vault")
+fn setup() -> QuasarSvm {
+    let elf = std::fs::read("../../target/deploy/quasar_vault.so").unwrap();
+    QuasarSvm::new().with_program(&crate::ID, &elf)
+}
+
+fn signer(address: Pubkey) -> Account {
+    quasar_svm::token::create_keyed_system_account(&address, 10_000_000_000)
+}
+
+fn empty(address: Pubkey) -> Account {
+    Account {
+        address,
+        lamports: 0,
+        data: vec![],
+        owner: quasar_svm::system_program::ID,
+        executable: false,
+    }
 }
 
 #[test]
 fn test_deposit() {
-    let mollusk = setup();
+    let mut svm = setup();
 
-    let (system_program, system_program_account) = keyed_account_for_system_program();
-
-    let user = Address::new_unique();
-    let user_account = Account::new(10_000_000_000, 0, &system_program);
-
-    let (vault, _vault_bump) =
-        Address::find_program_address(&[b"vault", user.as_ref()], &crate::ID);
-    let vault_account = Account::new(0, 0, &system_program);
+    let user = Pubkey::new_unique();
+    let system_program = quasar_svm::system_program::ID;
+    let (vault, _) = Pubkey::find_program_address(&[b"vault", user.as_ref()], &crate::ID);
 
     let deposit_amount: u64 = 1_000_000_000;
 
@@ -35,23 +42,12 @@ fn test_deposit() {
     }
     .into();
 
-    let result = mollusk.process_instruction(
-        &instruction,
-        &[
-            (user, user_account.clone()),
-            (vault, vault_account.clone()),
-            (system_program, system_program_account.clone()),
-        ],
-    );
+    let result = svm.process_instruction(&instruction, &[signer(user), empty(vault)]);
 
-    assert!(
-        result.program_result.is_ok(),
-        "deposit failed: {:?}",
-        result.program_result
-    );
+    assert!(result.is_ok(), "deposit failed: {:?}", result.raw_result);
 
-    let user_after = result.resulting_accounts[0].1.lamports;
-    let vault_after = result.resulting_accounts[1].1.lamports;
+    let user_after = result.account(&user).unwrap().lamports;
+    let vault_after = result.account(&vault).unwrap().lamports;
 
     assert_eq!(
         user_after,
@@ -60,53 +56,19 @@ fn test_deposit() {
     );
     assert_eq!(vault_after, deposit_amount, "vault lamports after deposit");
 
-    println!("\n========================================");
     println!("  DEPOSIT CU: {}", result.compute_units_consumed);
-    println!("========================================\n");
 }
 
 #[test]
 fn test_withdraw() {
-    let mollusk = setup();
+    let mut svm = setup();
 
-    let (system_program, system_program_account) = keyed_account_for_system_program();
+    let user = Pubkey::new_unique();
+    let (vault, _) = Pubkey::find_program_address(&[b"vault", user.as_ref()], &crate::ID);
 
-    let user = Address::new_unique();
-    let user_account = Account::new(10_000_000_000, 0, &system_program);
-
-    let (vault, _vault_bump) =
-        Address::find_program_address(&[b"vault", user.as_ref()], &crate::ID);
-    let vault_account = Account::new(0, 0, &crate::ID);
-
-    let deposit_amount: u64 = 1_000_000_000;
-
-    // First deposit
-    let deposit_ix: Instruction = DepositInstruction {
-        user,
-        vault,
-        system_program,
-        amount: deposit_amount,
-    }
-    .into();
-
-    let result = mollusk.process_instruction(
-        &deposit_ix,
-        &[
-            (user, user_account),
-            (vault, vault_account),
-            (system_program, system_program_account),
-        ],
-    );
-    assert!(
-        result.program_result.is_ok(),
-        "deposit failed: {:?}",
-        result.program_result
-    );
-
-    let user_after_deposit = result.resulting_accounts[0].1.clone();
-    let vault_after_deposit = result.resulting_accounts[1].1.clone();
-
-    // Now withdraw
+    // Pre-fund vault as program-owned (withdraw uses direct lamport
+    // manipulation which requires program ownership of the vault PDA).
+    let vault_lamports: u64 = 1_000_000_000;
     let withdraw_amount: u64 = 500_000_000;
 
     let withdraw_ix: Instruction = WithdrawInstruction {
@@ -116,35 +78,34 @@ fn test_withdraw() {
     }
     .into();
 
-    let result = mollusk.process_instruction(
+    let result = svm.process_instruction(
         &withdraw_ix,
         &[
-            (user, user_after_deposit.clone()),
-            (vault, vault_after_deposit),
+            signer(user),
+            Account {
+                address: vault,
+                lamports: vault_lamports,
+                data: vec![],
+                owner: crate::ID,
+                executable: false,
+            },
         ],
     );
+    assert!(result.is_ok(), "withdraw failed: {:?}", result.raw_result);
 
-    assert!(
-        result.program_result.is_ok(),
-        "withdraw failed: {:?}",
-        result.program_result
-    );
-
-    let user_final = result.resulting_accounts[0].1.lamports;
-    let vault_final = result.resulting_accounts[1].1.lamports;
+    let user_final = result.account(&user).unwrap().lamports;
+    let vault_final = result.account(&vault).unwrap().lamports;
 
     assert_eq!(
         user_final,
-        user_after_deposit.lamports + withdraw_amount,
+        10_000_000_000 + withdraw_amount,
         "user lamports after withdraw"
     );
     assert_eq!(
         vault_final,
-        deposit_amount - withdraw_amount,
+        vault_lamports - withdraw_amount,
         "vault lamports after withdraw"
     );
 
-    println!("\n========================================");
     println!("  WITHDRAW CU: {}", result.compute_units_consumed);
-    println!("========================================\n");
 }

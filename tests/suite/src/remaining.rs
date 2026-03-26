@@ -1,7 +1,7 @@
 use {
     mollusk_svm::{result::ProgramResult, Mollusk},
     quasar_lang::{error::QuasarError, prelude::ProgramError},
-    quasar_test_misc::client::*,
+    quasar_test_misc::cpi::*,
     solana_account::Account,
     solana_address::Address,
     solana_instruction::{AccountMeta, Instruction},

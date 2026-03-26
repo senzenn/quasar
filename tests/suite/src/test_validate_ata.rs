@@ -2,7 +2,7 @@ use {
     crate::helpers::*,
     quasar_spl::get_associated_token_address_with_program_const,
     quasar_svm::{Instruction, Pubkey},
-    quasar_test_token_validate::client::*,
+    quasar_test_token_validate::cpi::*,
 };
 
 // ===========================================================================

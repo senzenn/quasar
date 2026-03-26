@@ -1,7 +1,7 @@
 use {
     crate::helpers::*,
     quasar_svm::{Instruction, Pubkey},
-    quasar_test_token_validate::client::*,
+    quasar_test_token_validate::cpi::*,
 };
 
 // ===========================================================================

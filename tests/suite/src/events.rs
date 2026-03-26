@@ -1,5 +1,5 @@
 use {
-    mollusk_svm::Mollusk, quasar_test_events::client::*, solana_account::Account,
+    mollusk_svm::Mollusk, quasar_test_events::cpi::*, solana_account::Account,
     solana_address::Address,
 };
 
