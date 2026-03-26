@@ -138,9 +138,9 @@ fn emit_lib_rs(
     let mut out = String::new();
     out.push_str("use solana_address::Address;\n\n");
 
-    write!(
+    writeln!(
         out,
-        "pub const ID: Address = solana_address::address!(\"{}\");\n",
+        "pub const ID: Address = solana_address::address!(\"{}\");",
         parsed.program_id
     )
     .expect("write to String");
