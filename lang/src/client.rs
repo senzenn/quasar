@@ -1,101 +1,168 @@
 //! Off-chain instruction building utilities.
 //!
-//! This module provides `WriteBytes` and `build_instruction_data` for
-//! constructing Solana instruction data in client (non-SBF) contexts.
-//! The `#[derive(Accounts)]` macro generates client-side `build_ix()` methods
-//! that use these helpers.
+//! This module re-exports [`wincode`] for bincode-compatible serialization and
+//! provides three wrapper types that encode Quasar's dynamic wire format:
 //!
-//! **This is the only module in `quasar-core` that allocates** — it uses
+//! | Type | Wire format |
+//! |------|-------------|
+//! | [`DynBytes`] | `u32 LE` length prefix + raw bytes |
+//! | [`DynVec<T>`] | `u32 LE` length prefix + each item serialized |
+//! | [`TailBytes`] | raw bytes (no length prefix) |
+//!
+//! **This is the only module in `quasar-lang` that allocates** — it uses
 //! `alloc::vec::Vec` for instruction data buffers since off-chain code runs
 //! in a standard allocator environment.
 
 extern crate alloc;
 
 use alloc::vec::Vec;
+use core::mem::MaybeUninit;
+use wincode::{
+    config::ConfigCore,
+    error::{ReadResult, WriteResult},
+    io::{Reader, Writer},
+    len::{SeqLen, UseIntLen},
+    SchemaRead, SchemaWrite,
+};
+
+// Re-export wincode for downstream derive macro codegen.
+pub use wincode;
+
+// Re-export instruction types used by generated client code.
 pub use solana_instruction::{AccountMeta, Instruction};
 
-/// Trait for serializing instruction data fields to little-endian bytes.
-pub trait WriteBytes {
-    fn write_bytes(&self, buf: &mut Vec<u8>);
+/// Length encoding: little-endian `u32` prefix (Quasar wire format).
+type U32Len = UseIntLen<u32>;
+
+// ---------------------------------------------------------------------------
+// DynBytes — u32-prefixed raw byte buffer
+// ---------------------------------------------------------------------------
+
+/// A dynamically-sized byte buffer prefixed with a `u32 LE` length.
+///
+/// Used in generated client code to serialize variable-length byte fields
+/// (e.g. `String`, `Vec<u8>`) in instruction data.
+pub struct DynBytes(pub Vec<u8>);
+
+unsafe impl<C: ConfigCore> SchemaWrite<C> for DynBytes
+where
+    U32Len: wincode::len::SeqLen<C>,
+{
+    type Src = Vec<u8>;
+
+    fn size_of(src: &Self::Src) -> WriteResult<usize> {
+        Ok(U32Len::write_bytes_needed(src.len())? + src.len())
+    }
+
+    fn write(mut writer: impl Writer, src: &Self::Src) -> WriteResult<()> {
+        U32Len::write(writer.by_ref(), src.len())?;
+        writer.write(src)?;
+        Ok(())
+    }
 }
 
-macro_rules! impl_write_bytes_int {
-    ($($t:ty),*) => {$(
-        impl WriteBytes for $t {
-            #[inline(always)]
-            fn write_bytes(&self, buf: &mut Vec<u8>) {
-                buf.extend_from_slice(&self.to_le_bytes());
-            }
+unsafe impl<'de, C: ConfigCore> SchemaRead<'de, C> for DynBytes
+where
+    U32Len: wincode::len::SeqLen<C>,
+{
+    type Dst = Vec<u8>;
+
+    fn read(mut reader: impl Reader<'de>, dst: &mut MaybeUninit<Self::Dst>) -> ReadResult<()> {
+        let len = U32Len::read(reader.by_ref())?;
+        let bytes = reader.take_scoped(len)?;
+        dst.write(bytes.to_vec());
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DynVec<T> — u32-prefixed sequence of T
+// ---------------------------------------------------------------------------
+
+/// A dynamically-sized vector of `T` prefixed with a `u32 LE` element count.
+///
+/// Used in generated client code to serialize `Vec<T>` instruction arguments.
+pub struct DynVec<T>(core::marker::PhantomData<T>);
+
+unsafe impl<T, C: ConfigCore> SchemaWrite<C> for DynVec<T>
+where
+    T: SchemaWrite<C>,
+    T::Src: Sized,
+    U32Len: wincode::len::SeqLen<C>,
+{
+    type Src = Vec<T::Src>;
+
+    fn size_of(src: &Self::Src) -> WriteResult<usize> {
+        let mut total = U32Len::write_bytes_needed(src.len())?;
+        for item in src {
+            total += T::size_of(item)?;
         }
-    )*}
-}
-
-impl_write_bytes_int!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
-
-impl WriteBytes for bool {
-    #[inline(always)]
-    fn write_bytes(&self, buf: &mut Vec<u8>) {
-        buf.push(*self as u8);
+        Ok(total)
     }
-}
 
-impl WriteBytes for solana_address::Address {
-    #[inline(always)]
-    fn write_bytes(&self, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(self.as_ref());
-    }
-}
-
-impl<const N: usize> WriteBytes for [u8; N] {
-    #[inline(always)]
-    fn write_bytes(&self, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(self);
-    }
-}
-
-impl<T: WriteBytes> WriteBytes for Vec<T> {
-    #[inline(always)]
-    fn write_bytes(&self, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&(self.len() as u32).to_le_bytes());
-        for item in self {
-            item.write_bytes(buf);
+    fn write(mut writer: impl Writer, src: &Self::Src) -> WriteResult<()> {
+        U32Len::write(writer.by_ref(), src.len())?;
+        for item in src {
+            T::write(writer.by_ref(), item)?;
         }
+        Ok(())
     }
 }
 
-// Pod types store little-endian bytes internally, so we write the raw bytes.
-macro_rules! impl_write_bytes_pod {
-    ($($pod:ident),*) => {$(
-        impl WriteBytes for crate::pod::$pod {
-            #[inline(always)]
-            fn write_bytes(&self, buf: &mut Vec<u8>) {
-                buf.extend_from_slice(&self.get().to_le_bytes());
-            }
+unsafe impl<'de, T, C: ConfigCore> SchemaRead<'de, C> for DynVec<T>
+where
+    T: SchemaRead<'de, C>,
+    U32Len: wincode::len::SeqLen<C>,
+{
+    type Dst = Vec<T::Dst>;
+
+    fn read(mut reader: impl Reader<'de>, dst: &mut MaybeUninit<Self::Dst>) -> ReadResult<()> {
+        let len = U32Len::read(reader.by_ref())?;
+        let mut vec = Vec::with_capacity(len);
+        for _ in 0..len {
+            vec.push(T::get(reader.by_ref())?);
         }
-    )*}
-}
-
-impl_write_bytes_pod!(PodU16, PodU32, PodU64, PodU128, PodI16, PodI32, PodI64, PodI128);
-
-impl WriteBytes for crate::pod::PodBool {
-    #[inline(always)]
-    fn write_bytes(&self, buf: &mut Vec<u8>) {
-        buf.push(self.get() as u8);
+        dst.write(vec);
+        Ok(())
     }
 }
 
+// ---------------------------------------------------------------------------
+// TailBytes — unprefixed trailing bytes
+// ---------------------------------------------------------------------------
+
+/// Raw trailing bytes with no length prefix.
+///
+/// On write, emits the raw bytes. On read, consumes all remaining bytes
+/// from the reader. Useful for variable-length trailing data in instruction
+/// payloads.
 pub struct TailBytes(pub Vec<u8>);
 
-impl WriteBytes for TailBytes {
-    #[inline(always)]
-    fn write_bytes(&self, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&self.0);
+unsafe impl<C: ConfigCore> SchemaWrite<C> for TailBytes {
+    type Src = Vec<u8>;
+
+    fn size_of(src: &Self::Src) -> WriteResult<usize> {
+        Ok(src.len())
+    }
+
+    fn write(mut writer: impl Writer, src: &Self::Src) -> WriteResult<()> {
+        writer.write(src)?;
+        Ok(())
     }
 }
 
-#[inline(always)]
-pub fn build_instruction_data(disc: &[u8], write_args: impl FnOnce(&mut Vec<u8>)) -> Vec<u8> {
-    let mut data = Vec::from(disc);
-    write_args(&mut data);
-    data
+unsafe impl<'de, C: ConfigCore> SchemaRead<'de, C> for TailBytes {
+    type Dst = Vec<u8>;
+
+    fn read(mut reader: impl Reader<'de>, dst: &mut MaybeUninit<Self::Dst>) -> ReadResult<()> {
+        // Consume all remaining bytes one at a time. This is only used
+        // off-chain for instruction data deserialization, so the byte-at-a-time
+        // approach is acceptable.
+        let mut bytes = Vec::new();
+        while let Ok(b) = reader.take_byte() {
+            bytes.push(b);
+        }
+        dst.write(bytes);
+        Ok(())
+    }
 }
