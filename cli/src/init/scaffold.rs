@@ -7,18 +7,9 @@ use {
     std::{fs, path::Path},
 };
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn scaffold(
-    dir: &str,
-    name: &str,
-    toolchain: Toolchain,
-    test_language: TestLanguage,
-    rust_framework: Option<RustFramework>,
-    ts_sdk: Option<TypeScriptSdk>,
-    template: Template,
-    package_manager: Option<&PackageManager>,
-    client_languages: &[String],
-) -> CliResult {
+/// Check that the target directory is usable before prompting the user for
+/// scaffolding parameters.  Exits the process with a diagnostic on failure.
+pub(super) fn validate_target_dir(dir: &str) {
     let root = Path::new(dir);
 
     if dir == "." {
@@ -65,6 +56,21 @@ pub(super) fn scaffold(
             std::process::exit(1);
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn scaffold(
+    dir: &str,
+    name: &str,
+    toolchain: Toolchain,
+    test_language: TestLanguage,
+    rust_framework: Option<RustFramework>,
+    ts_sdk: Option<TypeScriptSdk>,
+    template: Template,
+    package_manager: Option<&PackageManager>,
+    client_languages: &[String],
+) -> CliResult {
+    let root = Path::new(dir);
 
     let src = root.join("src");
     fs::create_dir_all(&src).map_err(anyhow::Error::from)?;
@@ -193,6 +199,28 @@ pub(super) fn scaffold(
             generate_test_ts(name, sdk, toolchain),
         )
         .map_err(anyhow::Error::from)?;
+    }
+
+    // Generate Cargo.lock with the system cargo.  The Solana toolchain
+    // bundles an older cargo that may fail to resolve crates using newer
+    // Rust editions.  Creating the lockfile now means `cargo build-sbf`
+    // will never have to perform dependency resolution itself.
+    let lock_ok = std::process::Command::new("cargo")
+        .arg("generate-lockfile")
+        .current_dir(root)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success());
+
+    if !lock_ok {
+        eprintln!(
+            "  {}",
+            crate::style::dim(
+                "note: could not generate Cargo.lock — run `cargo generate-lockfile` before \
+                 building"
+            )
+        );
     }
 
     Ok(())

@@ -25,6 +25,10 @@ fn run_once(debug: bool, features: Option<&str>) -> CliResult {
 
     let sp = style::spinner("Building...");
 
+    if config.is_solana_toolchain() {
+        ensure_lockfile(&sp);
+    }
+
     let output = if config.is_solana_toolchain() {
         let mut cmd = Command::new("cargo");
         cmd.arg("build-sbf");
@@ -144,6 +148,10 @@ pub fn profile_build() -> Result<PathBuf, crate::error::CliError> {
     crate::idl::generate(Path::new("."), &languages)?;
 
     let sp = style::spinner("Profile build...");
+
+    if config.is_solana_toolchain() {
+        ensure_lockfile(&sp);
+    }
 
     let output = if config.is_solana_toolchain() {
         let mut cmd = Command::new("cargo");
@@ -458,6 +466,84 @@ fn read_target_rustflags() -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// Ensure `Cargo.lock` is present and in sync with `Cargo.toml`, using the
+/// system cargo for resolution.
+///
+/// The Solana toolchain bundles an older cargo (currently 1.84) that cannot
+/// parse crate manifests using `edition = "2024"`.  By keeping the lockfile
+/// current via the system cargo, `cargo build-sbf` never needs to resolve
+/// dependencies itself — it just reads the existing lockfile.
+///
+/// Skips the work when the lockfile already exists and is newer than
+/// `Cargo.toml`.
+fn ensure_lockfile(sp: &indicatif::ProgressBar) {
+    let lock_exists = Path::new("Cargo.lock").exists();
+
+    let needs_refresh = if lock_exists {
+        // Refresh when Cargo.toml has been modified after Cargo.lock
+        fs::metadata("Cargo.toml")
+            .and_then(|m| m.modified())
+            .ok()
+            .zip(fs::metadata("Cargo.lock").and_then(|m| m.modified()).ok())
+            .is_some_and(|(toml_t, lock_t)| toml_t > lock_t)
+    } else {
+        true
+    };
+
+    if !needs_refresh {
+        return;
+    }
+
+    let result = Command::new("cargo")
+        .args(["generate-lockfile", "--quiet"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .output();
+
+    let failed = match result {
+        Ok(o) if o.status.success() => return,
+        Ok(o) => Some(String::from_utf8_lossy(&o.stderr).to_string()),
+        Err(e) => Some(e.to_string()),
+    };
+
+    // If there is no lockfile at all, the build will certainly fail with a
+    // confusing edition-related error from Solana's cargo.  Bail early with
+    // a clear diagnostic instead.
+    if !lock_exists {
+        sp.finish_and_clear();
+        eprintln!();
+        eprintln!("  {}", style::fail("failed to generate Cargo.lock"));
+        if let Some(msg) = &failed {
+            let trimmed = msg.trim();
+            if !trimmed.is_empty() {
+                for line in trimmed.lines() {
+                    eprintln!("  {}", style::dim(line));
+                }
+            }
+        }
+        eprintln!();
+        eprintln!(
+            "  {}",
+            style::dim("The Solana toolchain bundles an older cargo that cannot resolve")
+        );
+        eprintln!(
+            "  {}",
+            style::dim("some newer crate versions. Ensure your system cargo is up to date:")
+        );
+        eprintln!("    {}", style::bold("rustup update"));
+        eprintln!();
+        std::process::exit(1);
+    }
+
+    // Lockfile exists but is stale — warn and let build-sbf try with what
+    // we have.  It will often still work if the change didn't pull in an
+    // incompatible crate.
+    eprintln!(
+        "  {}",
+        style::dim("warning: could not refresh Cargo.lock — building with existing lockfile")
+    );
 }
 
 pub fn collect_mtimes(dir: &Path) -> Vec<(PathBuf, std::time::SystemTime)> {

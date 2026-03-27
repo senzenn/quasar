@@ -371,6 +371,9 @@ pub fn run(cmd: crate::InitCommand) -> CliResult {
         prompt.interact_text().map_err(anyhow::Error::from)?
     };
 
+    // Validate the target directory before prompting for remaining options
+    scaffold::validate_target_dir(&name);
+
     // When scaffolding into ".", derive the crate name from the current directory
     let crate_name = if name == "." {
         std::env::current_dir()
