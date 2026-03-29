@@ -296,6 +296,9 @@ pub(super) fn gen_init_block(
             &signers_ref,
             quote! {
                 let __disc = <#inner_type as quasar_lang::traits::Discriminator>::DISCRIMINATOR;
+                if quasar_lang::utils::hint::unlikely((__disc.len()) > #field_name.data_len()) {
+                    return Err(ProgramError::AccountDataTooSmall);
+                }
                 unsafe {
                     core::ptr::copy_nonoverlapping(
                         __disc.as_ptr(), #field_name.data_mut_ptr(), __disc.len(),
