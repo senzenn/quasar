@@ -7,6 +7,7 @@
 
 pub mod address;
 pub mod executable;
+pub mod helpers;
 pub mod mutable;
 pub mod owner;
 pub mod signer;

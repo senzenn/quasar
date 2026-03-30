@@ -16,6 +16,7 @@ pub use {
     crate::{
         accounts::*,
         checks,
+        checks::helpers::{require_address, require_executable, require_signer, require_writable},
         context::{Context, Ctx, CtxWithRemaining},
         cpi::{
             system::{System, SYSTEM_PROGRAM_ID},
