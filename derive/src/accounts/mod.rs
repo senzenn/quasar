@@ -206,7 +206,23 @@ pub(crate) fn derive_accounts(input: TokenStream) -> TokenStream {
                                 return Err(ProgramError::InvalidAccountData);
                             }
                             unsafe {
-                                core::ptr::write(base.add(#cur_offset), core::ptr::read(base.add(idx)));
+                                let dup_view = core::ptr::read(base.add(idx));
+                                let [_dup_borrow, dup_signer, dup_writable, dup_exec] = actual_header.to_le_bytes();
+                                let [_exp_borrow, exp_signer, exp_writable, exp_exec] = #expected_header.to_le_bytes();
+                                if quasar_lang::utils::hint::unlikely(
+                                    (exp_signer != 0 && dup_signer != exp_signer)
+                                        || dup_writable != exp_writable
+                                        || dup_exec != exp_exec
+                                ) {
+                                    return Err(if dup_writable != exp_writable {
+                                        ProgramError::Immutable
+                                    } else if exp_signer != 0 && dup_signer != exp_signer {
+                                        ProgramError::MissingRequiredSignature
+                                    } else {
+                                        ProgramError::InvalidAccountData
+                                    });
+                                }
+                                core::ptr::write(base.add(#cur_offset), dup_view);
                                 input = input.add(core::mem::size_of::<u64>());
                             }
                         }

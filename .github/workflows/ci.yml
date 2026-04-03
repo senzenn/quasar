@@ -177,7 +177,11 @@ jobs:
       - name: Capture base metrics
         run: |
           git checkout -f ${{ github.event.pull_request.base.sha }}
-          bash scripts/bench-tracked-programs.sh capture /tmp/base_metrics.env
+          if [ -f scripts/bench-tracked-programs.sh ]; then
+            bash scripts/bench-tracked-programs.sh capture /tmp/base_metrics.env
+          else
+            git show ${{ github.event.pull_request.head.sha }}:scripts/perf-baselines.env >/tmp/base_metrics.env
+          fi
 
       - name: Capture PR metrics
         run: |

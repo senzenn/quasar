@@ -77,7 +77,7 @@ pub(super) fn ensure_lockfile(sp: &indicatif::ProgressBar) -> Result<(), CliErro
         if let Some(msg) = &failed {
             let trimmed = msg.trim();
             if !trimmed.is_empty() {
-                message.push_str("\n");
+                message.push('\n');
                 message.push_str(trimmed);
             }
         }

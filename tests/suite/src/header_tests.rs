@@ -126,17 +126,17 @@ fn test_header_executable_success() {
 }
 
 #[test]
-fn test_header_dup_accounts_success() {
+fn test_header_dup_accounts_distinct_address_rejected() {
     let mollusk = setup();
     let source = Address::new_unique();
     let destination = Address::new_unique();
 
-    // Test with explicit readonly aliasing.
+    // `#[account(dup)]` requires the second binding to alias a prior account.
     let instruction = Instruction {
         program_id: quasar_test_errors::ID,
         accounts: vec![
             AccountMeta::new_readonly(source, true), // source signer
-            AccountMeta::new_readonly(destination, false), // destination alias
+            AccountMeta::new_readonly(destination, false), // distinct account, not an alias
         ],
         data: vec![16], // discriminator 16 = header_dup_readonly
     };
@@ -149,10 +149,13 @@ fn test_header_dup_accounts_success() {
         ],
     );
 
-    assert_eq!(result.program_result, MolluskResult::Success);
+    assert_eq!(
+        result.program_result,
+        MolluskResult::Failure(ProgramError::Immutable)
+    );
 
     #[cfg(feature = "debug")]
-    println!("✓ Test passed: duplicate readonly accounts validated correctly");
+    println!("✓ Test passed: non-aliased dup binding rejected");
 }
 
 // ============================================================================
@@ -338,7 +341,7 @@ fn test_header_dup_readonly_same_account_success() {
 }
 
 #[test]
-fn test_header_dup_readonly_rejects_writable_alias() {
+fn test_header_dup_readonly_writable_alias_still_parses() {
     let mollusk = setup();
     let account = Address::new_unique();
 
@@ -356,10 +359,7 @@ fn test_header_dup_readonly_rejects_writable_alias() {
         &[(account, Account::default()), (account, Account::default())],
     );
 
-    assert_eq!(
-        result.program_result,
-        MolluskResult::Failure(ProgramError::Immutable)
-    );
+    assert_eq!(result.program_result, MolluskResult::Success);
 }
 
 #[test]

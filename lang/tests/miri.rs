@@ -52,8 +52,8 @@
 //! | Tail &str / &[u8] to end of buffer | Sound |
 //!
 //! Note: these aliasing tests exercise low-level internal constructors only.
-//! The public `#[account(dup)]` contract now rejects writable duplicate
-//! bindings; duplicate roles are intended to stay read-only/pass-through.
+//! The public `#[account(dup)]` API rejects writable duplicate field bindings
+//! at macro-expansion time; duplicate runtime metas still follow SVM behavior.
 //!
 //! ## What Miri CANNOT test
 //!
