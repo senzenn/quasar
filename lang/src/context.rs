@@ -14,8 +14,11 @@
 
 use crate::{prelude::*, remaining::RemainingAccounts, traits::ParseAccountsUnchecked};
 
-/// Cast `&[u8; 32]` to `&Address`. Address is `#[repr(transparent)]` over `[u8;
-/// 32]`.
+/// Cast `&[u8; 32]` to `&Address`.
+///
+/// The entrypoint owns the original 32-byte program-id storage for the entire
+/// instruction, so the returned reference is valid for `'info`. This avoids
+/// copying the program ID into a stack-local `Address` on every dispatch path.
 #[inline(always)]
 unsafe fn as_address(bytes: &[u8; 32]) -> &Address {
     &*(bytes as *const [u8; 32] as *const Address)
@@ -122,8 +125,9 @@ impl<'info, T: ParseAccounts<'info> + ParseAccountsUnchecked<'info> + AccountCou
     pub fn new(ctx: Context<'info>) -> Result<Self, ProgramError> {
         let program_id_addr = unsafe { as_address(ctx.program_id) };
         // Save slice metadata before parse consumes the &mut borrow.
-        // Safety: AccountView is Copy and values are stable after parsing.
-        // The declared slice is only used for read-only duplicate resolution.
+        // The declared `AccountView`s are copied by value during parsing, so the
+        // backing slice header stays valid for read-only duplicate resolution
+        // after `parse_with_instruction_data_unchecked` returns.
         let declared_ptr = ctx.accounts.as_ptr();
         let declared_len = ctx.accounts.len();
         let (accounts, bumps) = unsafe {

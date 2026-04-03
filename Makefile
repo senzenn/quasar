@@ -13,8 +13,9 @@ SBF_EXAMPLES := examples/vault examples/escrow examples/multisig
 # All SBF programs
 SBF_ALL := $(SBF_EXAMPLES) $(SBF_TEST_PROGRAMS)
 
-.PHONY: format format-fix clippy clippy-fix check-features \
-	build build-sbf test bench-cu bench-tracked compare-tracked test-miri test-miri-strict test-all nightly-version
+.PHONY: format format-fix clippy clippy-fix check-features check-runtime-panics \
+	check-workspace-invariants build build-sbf test bench-cu bench-tracked compare-tracked \
+	test-miri test-miri-strict test-all nightly-version
 
 # Print the nightly toolchain version for CI
 nightly-version:
@@ -34,6 +35,12 @@ clippy-fix:
 
 check-features:
 	@cargo hack --feature-powerset --no-dev-deps check
+
+check-runtime-panics:
+	@bash scripts/check-runtime-panics.sh
+
+check-workspace-invariants:
+	@bash scripts/check-workspace-invariants.sh
 
 build:
 	@cargo build

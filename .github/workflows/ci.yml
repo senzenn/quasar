@@ -80,6 +80,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Verify workspace lint opt-in
         run: bash scripts/check-workspace-lints.sh
+      - name: Verify workspace invariants
+        run: bash scripts/check-workspace-invariants.sh
+      - name: Verify runtime panic policy
+        run: bash scripts/check-runtime-panics.sh
 
   cargo_test:
     name: Build & Test

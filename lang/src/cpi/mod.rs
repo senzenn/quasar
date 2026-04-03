@@ -232,7 +232,8 @@ const _: () = assert!(core::mem::offset_of!(RuntimeAccount, executable) == 3);
 /// Reads the 4-byte header `[borrow_state, is_signer, is_writable, executable]`
 /// as u32, shifts right 8 to drop `borrow_state`, keeping the three flag bytes.
 /// The result is transmuted to `CpiAccount` which has an identical `#[repr(C)]`
-/// layout (verified by compile-time assertions above).
+/// layout (verified by compile-time assertions above and by the
+/// `cpi_account_from_view_matches_upstream_layout` test).
 #[inline(always)]
 pub(crate) fn cpi_account_from_view(view: &AccountView) -> CpiAccount<'_> {
     let raw = view.account_ptr();
@@ -240,9 +241,9 @@ pub(crate) fn cpi_account_from_view(view: &AccountView) -> CpiAccount<'_> {
     // - `raw` points to a valid `RuntimeAccount` (guaranteed by `AccountView`).
     // - The u32 read is unaligned but SBF handles this natively; on other targets
     //   `read_unaligned` is correct by definition.
-    // - `RawCpiBuilder` has identical size/alignment as `CpiAccount` (verified by
-    //   compile-time assertions). The transmute reinterprets the builder as the
-    //   upstream type with no layout change.
+    // - `RawCpiBuilder` has identical size/alignment/field order as `CpiAccount`
+    //   (compile-time assertions + unit test). The transmute reinterprets the
+    //   builder as the upstream type with no layout change.
     // - Account data immediately follows the `RuntimeAccount` header.
     unsafe {
         let flags = (raw as *const u32).read_unaligned() >> 8;

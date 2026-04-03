@@ -67,7 +67,9 @@ unsafe fn advance_past_dup(ptr: *mut u8) -> *mut u8 {
 ///
 /// Uses a boundary pointer instead of a count — no reads or arithmetic
 /// in the dispatch hot path. The `ptr` starts at the first remaining
-/// account in the SVM input buffer; `boundary` marks the end.
+/// account in the SVM input buffer; `boundary` marks the end. Strict mode keeps
+/// a small stack cache of previously yielded accounts so duplicate metas can be
+/// rejected deterministically without allocating.
 pub struct RemainingAccounts<'a> {
     /// Current position in the SVM input buffer.
     ptr: *mut u8,
