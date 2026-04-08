@@ -336,6 +336,11 @@ fn check_instruction_input_name_collision(parsed: &ParsedProgram) {
 /// Check for discriminator collisions across all instruction, account, and
 /// event discriminators. Returns a list of collision descriptions, empty if no
 /// collisions found.
+///
+/// Collisions are checked within each kind (instruction-instruction,
+/// account-account, event-event). Cross-kind collisions are not flagged since
+/// different kinds use independent discriminator namespaces with potentially
+/// different byte lengths.
 pub fn find_discriminator_collisions(parsed: &ParsedProgram) -> Vec<String> {
     struct DiscEntry {
         kind: &'static str,
