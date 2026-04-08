@@ -240,32 +240,19 @@ pub(crate) fn derive_accounts(input: TokenStream) -> TokenStream {
                     }
                 });
             } else {
-                // No-dup path: single constant comparison
+                // No-dup path: masked comparison, enforces only required bits
                 let nodup_const = fields::determine_nodup_constant(field, attrs, is_ref_mut);
-                let nodup_const_ident = format_ident!("{}", nodup_const);
-
-                let (check_cond, debug_msg) = if attrs.init_if_needed {
-                    (
-                        quote! { (header & 0x000100FF) != 0x000100FF },
-                        "init_if_needed requires writable, no duplicates",
-                    )
-                } else if nodup_const == "NODUP_SIGNER" {
-                    // u16: borrow_state + is_signer only, permits writable/executable
-                    (
-                        quote! { (header as u16) != (quasar_lang::__internal::#nodup_const_ident as u16) },
-                        "must be signer, no duplicates",
-                    )
+                let debug_msg = if attrs.init_if_needed {
+                    "init_if_needed requires writable, no duplicates"
                 } else {
-                    (
-                        quote! { header != quasar_lang::__internal::#nodup_const_ident },
-                        match nodup_const {
-                            "NODUP" => "no duplicates allowed",
-                            "NODUP_MUT" => "must be writable, no duplicates",
-                            "NODUP_MUT_SIGNER" => "must be writable signer, no duplicates",
-                            "NODUP_EXECUTABLE" => "must be executable, no duplicates",
-                            _ => "constraint violated",
-                        },
-                    )
+                    match nodup_const {
+                        "NODUP" => "no duplicates allowed",
+                        "NODUP_SIGNER" => "must be signer, no duplicates",
+                        "NODUP_MUT" => "must be writable, no duplicates",
+                        "NODUP_MUT_SIGNER" => "must be writable signer, no duplicates",
+                        "NODUP_EXECUTABLE" => "must be executable, no duplicates",
+                        _ => "constraint violated",
+                    }
                 };
 
                 parse_steps.push(quote! {
@@ -273,7 +260,7 @@ pub(crate) fn derive_accounts(input: TokenStream) -> TokenStream {
                         let raw = input as *mut quasar_lang::__internal::RuntimeAccount;
                         let header = *(raw as *const u32);
 
-                        if quasar_lang::utils::hint::unlikely(#check_cond) {
+                        if quasar_lang::utils::hint::unlikely((header & #expected_header) != #expected_header) {
                             #[cfg(feature = "debug")]
                             quasar_lang::prelude::log(concat!(
                                 "Account '", stringify!(#field_name),

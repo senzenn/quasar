@@ -160,9 +160,8 @@ pub fn is_system_program(addr: &solana_address::Address) -> bool {
 
 /// Decode a failed u32 header check into the appropriate error.
 ///
-/// Cold path — called only when the header comparison fails. Decomposes
-/// the header `[borrow_state, is_signer, is_writable, executable]` to
-/// determine which flag validation failed.
+/// Cold path — called only when the header comparison fails. Reports the
+/// first required bit that is missing in `header`.
 #[cold]
 #[inline(never)]
 #[allow(unused_variables)]
@@ -177,12 +176,12 @@ pub fn decode_header_error(header: u32, expected: u32) -> u64 {
         solana_program_log::log("duplicate account detected");
         return u64::from(ProgramError::AccountBorrowFailed);
     }
-    if signer != exp_signer {
+    if exp_signer != 0 && signer == 0 {
         #[cfg(feature = "debug")]
         solana_program_log::log("missing required signature");
         return u64::from(ProgramError::MissingRequiredSignature);
     }
-    if writable != exp_writable {
+    if exp_writable != 0 && writable == 0 {
         #[cfg(feature = "debug")]
         solana_program_log::log("account not writable");
         return u64::from(ProgramError::Immutable);

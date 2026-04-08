@@ -383,3 +383,71 @@ fn test_header_dup_signer_same_account_success() {
 
     assert_eq!(result.program_result, MolluskResult::Success);
 }
+
+// ============================================================================
+// Acceptance Cases — Extra runtime privileges allowed
+// ============================================================================
+
+#[test]
+fn test_header_nodup_mut_accepts_extra_signer() {
+    let mollusk = setup();
+    let account = Address::new_unique();
+
+    let instruction = Instruction {
+        program_id: quasar_test_errors::ID,
+        accounts: vec![AccountMeta::new(account, true)], // writable + signer
+        data: vec![13],                                  // header_nodup_mut
+    };
+
+    let result = mollusk.process_instruction(&instruction, &[(account, Account::default())]);
+
+    assert_eq!(result.program_result, MolluskResult::Success);
+}
+
+#[test]
+fn test_header_nodup_accepts_extra_signer() {
+    let mollusk = setup();
+    let account = Address::new_unique();
+
+    let instruction = Instruction {
+        program_id: quasar_test_errors::ID,
+        accounts: vec![AccountMeta::new_readonly(account, true)], // read-only + signer
+        data: vec![23],                                           // unchecked_account_check
+    };
+
+    let result = mollusk.process_instruction(&instruction, &[(account, Account::default())]);
+
+    assert_eq!(result.program_result, MolluskResult::Success);
+}
+
+#[test]
+fn test_header_nodup_accepts_extra_writable() {
+    let mollusk = setup();
+    let account = Address::new_unique();
+
+    let instruction = Instruction {
+        program_id: quasar_test_errors::ID,
+        accounts: vec![AccountMeta::new(account, false)], // writable, no signer
+        data: vec![23],                                   // unchecked_account_check
+    };
+
+    let result = mollusk.process_instruction(&instruction, &[(account, Account::default())]);
+
+    assert_eq!(result.program_result, MolluskResult::Success);
+}
+
+#[test]
+fn test_header_nodup_signer_accepts_extra_writable() {
+    let mollusk = setup();
+    let account = Address::new_unique();
+
+    let instruction = Instruction {
+        program_id: quasar_test_errors::ID,
+        accounts: vec![AccountMeta::new(account, true)], // writable + signer
+        data: vec![14],                                  // header_nodup_signer
+    };
+
+    let result = mollusk.process_instruction(&instruction, &[(account, Account::default())]);
+
+    assert_eq!(result.program_result, MolluskResult::Success);
+}

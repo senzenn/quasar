@@ -78,11 +78,14 @@ pub(super) fn determine_nodup_constant(
 /// Compute the expected u32 header value for a field based on its attributes
 /// and type.
 ///
+/// Used as both mask and expected in the no-dup check
+/// `(header & expected) != expected`. Bits set to 0 are don't-care.
+///
 /// Returns a u32 in little-endian byte order:
 /// - Byte 0: borrow_state (always 0xFF for no-dup)
-/// - Byte 1: is_signer (1 if required, 0 otherwise)
-/// - Byte 2: is_writable (1 if required, 0 otherwise)
-/// - Byte 3: executable (1 if required, 0 otherwise)
+/// - Byte 1: is_signer (1 if required, 0 = don't care)
+/// - Byte 2: is_writable (1 if required, 0 = don't care)
+/// - Byte 3: executable (1 if required, 0 = don't care)
 pub(super) fn compute_header_expected(
     field: &syn::Field,
     attrs: &super::attrs::AccountFieldAttrs,
