@@ -91,6 +91,14 @@ fn gen_init_cpi_body(
 ///   validation (if provided). Declarative field checks such as `has_one`,
 ///   `address`, and `constraint = ...` still run later in the normal parse
 ///   phase after field construction.
+///
+/// ## Re-initialization Safety
+///
+/// If an account was closed and then passed to an `init_if_needed` instruction
+/// within the same transaction, it will be re-initialized. This is by design --
+/// the account's owner is the system program after close, so it appears
+/// uninitialized. Programs that need to prevent same-transaction re-use of
+/// closed accounts should check a separate flag or use an epoch-based guard.
 pub(super) fn wrap_init_block(
     field_name: &Ident,
     init_if_needed: bool,
