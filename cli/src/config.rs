@@ -15,6 +15,14 @@ pub struct QuasarConfig {
     pub testing: TestingConfig,
     #[serde(default)]
     pub clients: Option<ClientsConfig>,
+    #[serde(default)]
+    pub lint: Option<LintConfig>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct LintConfig {
+    #[serde(default)]
+    pub enabled: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -102,6 +110,10 @@ impl QuasarConfig {
 
     pub fn has_rust_tests(&self) -> bool {
         self.testing.language == "rust"
+    }
+
+    pub fn lint_enabled(&self) -> bool {
+        self.lint.as_ref().is_some_and(|l| l.enabled)
     }
 
     pub fn client_languages(&self) -> Vec<&str> {

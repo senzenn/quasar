@@ -22,21 +22,25 @@ use {
     },
 };
 
-pub fn run(debug: bool, watch: bool, features: Option<String>) -> CliResult {
+pub fn run(debug: bool, watch: bool, features: Option<String>, lint: bool) -> CliResult {
     if watch {
         run_watch(debug, features);
     }
 
-    run_once(debug, features.as_deref())
+    run_once(debug, features.as_deref(), lint)
 }
 
-fn run_once(debug: bool, features: Option<&str>) -> CliResult {
+fn run_once(debug: bool, features: Option<&str>, lint_flag: bool) -> CliResult {
     let config = QuasarConfig::load()?;
     let start = Instant::now();
 
     let languages = config.client_languages();
     let crate_root = utils::find_program_crate(&config);
-    crate::idl::generate(&crate_root, &languages)?;
+    let parsed = crate::idl::generate(&crate_root, &languages)?;
+
+    if lint_flag || config.lint_enabled() {
+        crate::lint::run_lint_on_parsed(&parsed, &quasar_idl::lint::LintConfig::default())?;
+    }
 
     let sp = style::spinner("Building...");
 
@@ -161,7 +165,7 @@ pub fn profile_build() -> Result<PathBuf, crate::error::CliError> {
 
     let languages = config.client_languages();
     let crate_root = utils::find_program_crate(&config);
-    crate::idl::generate(&crate_root, &languages)?;
+    let _parsed = crate::idl::generate(&crate_root, &languages)?;
 
     let sp = style::spinner("Profile build...");
 
@@ -268,7 +272,7 @@ pub fn profile_build() -> Result<PathBuf, crate::error::CliError> {
 }
 
 fn run_watch(debug: bool, features: Option<String>) -> ! {
-    watch_loop(|| run_once(debug, features.as_deref()))
+    watch_loop(|| run_once(debug, features.as_deref(), false))
 }
 
 // ---------------------------------------------------------------------------

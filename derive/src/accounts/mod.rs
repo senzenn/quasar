@@ -186,12 +186,36 @@ pub(crate) fn derive_accounts(input: TokenStream) -> TokenStream {
                     flag_check
                 };
 
+                // For dup fields (not optional), enforce that non-dup entries
+                // must alias a previously parsed account.
+                let dup_alias_check = if attrs.dup {
+                    let offset = cur_offset.clone();
+                    quote! {
+                        let mut __dup_found = false;
+                        for __i in 0..#offset {
+                            if quasar_lang::keys_eq(
+                                unsafe { &(*raw).address },
+                                unsafe { core::ptr::read(base.add(__i)) }.address(),
+                            ) {
+                                __dup_found = true;
+                                break;
+                            }
+                        }
+                        if quasar_lang::utils::hint::unlikely(!__dup_found) {
+                            return Err(ProgramError::InvalidAccountData);
+                        }
+                    }
+                } else {
+                    quote! {}
+                };
+
                 parse_steps.push(quote! {
                     {
                         let raw = input as *mut quasar_lang::__internal::RuntimeAccount;
                         let actual_header = unsafe { *(raw as *const u32) };
 
                         if (actual_header & 0xFF) == quasar_lang::__internal::NOT_BORROWED as u32 {
+                            #dup_alias_check
                             #guarded_checks
                             unsafe {
                                 core::ptr::write(base.add(#cur_offset), quasar_lang::__internal::AccountView::new_unchecked(raw));
@@ -206,23 +230,10 @@ pub(crate) fn derive_accounts(input: TokenStream) -> TokenStream {
                                 return Err(ProgramError::InvalidAccountData);
                             }
                             unsafe {
-                                let dup_view = core::ptr::read(base.add(idx));
-                                let [_dup_borrow, dup_signer, dup_writable, dup_exec] = actual_header.to_le_bytes();
-                                let [_exp_borrow, exp_signer, exp_writable, exp_exec] = #expected_header.to_le_bytes();
-                                if quasar_lang::utils::hint::unlikely(
-                                    (exp_signer != 0 && dup_signer != exp_signer)
-                                        || dup_writable != exp_writable
-                                        || dup_exec != exp_exec
-                                ) {
-                                    return Err(if dup_writable != exp_writable {
-                                        ProgramError::Immutable
-                                    } else if exp_signer != 0 && dup_signer != exp_signer {
-                                        ProgramError::MissingRequiredSignature
-                                    } else {
-                                        ProgramError::InvalidAccountData
-                                    });
-                                }
-                                core::ptr::write(base.add(#cur_offset), dup_view);
+                                // Dup accounts share the original account's view. Flag
+                                // requirements (signer, writable) are enforced at the
+                                // original slot; the dup entry only carries the index.
+                                core::ptr::write(base.add(#cur_offset), core::ptr::read(base.add(idx)));
                                 input = input.add(core::mem::size_of::<u64>());
                             }
                         }

@@ -151,7 +151,7 @@ fn test_header_dup_accounts_distinct_address_rejected() {
 
     assert_eq!(
         result.program_result,
-        MolluskResult::Failure(ProgramError::Immutable)
+        MolluskResult::Failure(ProgramError::InvalidAccountData)
     );
 
     #[cfg(feature = "debug")]

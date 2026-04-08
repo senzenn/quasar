@@ -3,13 +3,17 @@ use {
         error::{CliError, CliResult},
         IdlCommand,
     },
-    quasar_idl::{codegen, parser, types::Idl},
+    quasar_idl::{
+        codegen,
+        parser::{self, ParsedProgram},
+        types::Idl,
+    },
     std::path::{Path, PathBuf},
 };
 
 /// Parse program source, write IDL JSON and Rust client.
 /// Returns the IDL for optional downstream client generation.
-fn generate_idl(crate_path: &Path) -> Result<Idl, anyhow::Error> {
+fn generate_idl(crate_path: &Path) -> Result<(Idl, ParsedProgram), anyhow::Error> {
     let parsed = parser::parse_program(crate_path);
 
     // Rust client needs the parsed AST (not just IDL), generate before build_idl
@@ -49,7 +53,11 @@ fn generate_idl(crate_path: &Path) -> Result<Idl, anyhow::Error> {
         std::fs::write(&file_path, content)?;
     }
 
-    Ok(idl)
+    // Re-parse for downstream consumers (lint). build_idl consumed the first
+    // parse, but re-parsing is cheap and avoids Clone on syn types.
+    let parsed_for_lint = parser::parse_program(crate_path);
+
+    Ok((idl, parsed_for_lint))
 }
 
 /// Called by `quasar idl <path>` — generates IDL JSON + Rust client only.
@@ -68,9 +76,9 @@ pub fn run(command: IdlCommand) -> CliResult {
 }
 
 /// Called by `quasar build` — generates IDL + Rust client + configured language
-/// clients.
-pub fn generate(crate_path: &Path, languages: &[&str]) -> CliResult {
-    let idl = generate_idl(crate_path)?;
+/// clients. Returns the ParsedProgram for downstream lint use.
+pub fn generate(crate_path: &Path, languages: &[&str]) -> Result<ParsedProgram, CliError> {
+    let (idl, parsed) = generate_idl(crate_path)?;
     crate::client::generate_clients(&idl, languages)?;
-    Ok(())
+    Ok(parsed)
 }

@@ -22,7 +22,7 @@ pub fn run(
 
     // Build unless skipped
     if !skip_build {
-        crate::build::run(false, false, None)?;
+        crate::build::run(false, false, None, false)?;
     }
 
     // Find the .so binary

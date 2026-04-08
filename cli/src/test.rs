@@ -29,7 +29,7 @@ fn run_once(
     let config = QuasarConfig::load()?;
 
     if !no_build {
-        crate::build::run(debug, false, features.map(String::from))?;
+        crate::build::run(debug, false, features.map(String::from), false)?;
     }
 
     if config.has_typescript_tests() {

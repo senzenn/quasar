@@ -597,6 +597,7 @@ fn collision_three_instructions_pairwise() {
 
 use quasar_idl::{
     codegen::rust::{generate_cargo_toml, generate_client},
+    lint::constraints::{FieldClass, FieldConstraints},
     parser::{
         accounts::{RawAccountField, RawAccountsStruct, RawPda, RawSeed},
         ParsedProgram,
@@ -714,6 +715,9 @@ fn rust_codegen_account_metas() {
                     signer: true,
                     pda: None,
                     address: None,
+                    field_class: FieldClass::Unchecked,
+                    inner_type_name: None,
+                    constraints: FieldConstraints::default(),
                 },
                 RawAccountField {
                     name: "to".to_string(),
@@ -721,6 +725,9 @@ fn rust_codegen_account_metas() {
                     signer: false,
                     pda: None,
                     address: None,
+                    field_class: FieldClass::Unchecked,
+                    inner_type_name: None,
+                    constraints: FieldConstraints::default(),
                 },
                 RawAccountField {
                     name: "authority".to_string(),
@@ -728,6 +735,9 @@ fn rust_codegen_account_metas() {
                     signer: true,
                     pda: None,
                     address: None,
+                    field_class: FieldClass::Unchecked,
+                    inner_type_name: None,
+                    constraints: FieldConstraints::default(),
                 },
             ],
         });
@@ -1807,6 +1817,9 @@ fn rust_codegen_pda_helpers() {
                     ],
                 }),
                 address: None,
+                field_class: FieldClass::Unchecked,
+                inner_type_name: None,
+                constraints: FieldConstraints::default(),
             },
             RawAccountField {
                 name: "user".to_string(),
@@ -1814,6 +1827,9 @@ fn rust_codegen_pda_helpers() {
                 signer: true,
                 pda: None,
                 address: None,
+                field_class: FieldClass::Unchecked,
+                inner_type_name: None,
+                constraints: FieldConstraints::default(),
             },
         ],
     }];
@@ -1850,6 +1866,9 @@ fn rust_codegen_pda_dedup() {
                 signer: false,
                 pda: pda.clone(),
                 address: None,
+                field_class: FieldClass::Unchecked,
+                inner_type_name: None,
+                constraints: FieldConstraints::default(),
             }],
         },
         RawAccountsStruct {
@@ -1860,6 +1879,9 @@ fn rust_codegen_pda_dedup() {
                 signer: false,
                 pda,
                 address: None,
+                field_class: FieldClass::Unchecked,
+                inner_type_name: None,
+                constraints: FieldConstraints::default(),
             }],
         },
     ];

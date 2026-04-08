@@ -3,6 +3,7 @@
 
 use {
     crate::{
+        lint::constraints::{self, FieldClass, FieldConstraints},
         parser::helpers,
         types::{IdlAccountItem, IdlPda, IdlSeed},
     },
@@ -21,6 +22,9 @@ pub struct RawAccountField {
     pub signer: bool,
     pub pda: Option<RawPda>,
     pub address: Option<String>,
+    pub field_class: FieldClass,
+    pub inner_type_name: Option<String>,
+    pub constraints: FieldConstraints,
 }
 
 #[derive(Clone)]
@@ -116,12 +120,18 @@ fn parse_account_field(field: &syn::Field, parent: &syn::ItemStruct) -> RawAccou
 
     let signer = helpers::is_signer_type(&field.ty);
 
+    let (field_class, inner_type_name) = constraints::classify_field_type(&field.ty);
+    let constraints = constraints::parse_field_constraints(&field.attrs);
+
     RawAccountField {
         name,
         writable,
         signer,
         pda,
         address,
+        field_class,
+        inner_type_name,
+        constraints,
     }
 }
 
