@@ -96,6 +96,7 @@ fn has_writable_directive(attrs: &[syn::Attribute]) -> bool {
                 || d == "init_if_needed"
                 || d.starts_with("close")
                 || d.starts_with("realloc")
+                || d.starts_with("sweep")
             {
                 return true;
             }
