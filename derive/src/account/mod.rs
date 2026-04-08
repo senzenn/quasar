@@ -25,8 +25,8 @@ pub(crate) fn account(attr: TokenStream, item: TokenStream) -> TokenStream {
     let seeds_impl = match seeds_parsed {
         Some(Ok(ref attr)) => Some(seeds::generate_seeds_impl(
             &input.ident,
+            &input.generics,
             attr,
-            input.generics.lifetimes().next().is_some(),
         )),
         Some(Err(e)) => return e.to_compile_error().into(),
         None => None,

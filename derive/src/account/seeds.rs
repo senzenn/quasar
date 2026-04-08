@@ -77,27 +77,22 @@ pub fn parse_seeds_attr(attrs: &[syn::Attribute]) -> Option<syn::Result<SeedsAtt
 }
 
 /// Generate the `HasSeeds` impl for an account type.
+///
+/// Uses the full generics from the input struct so that arbitrary lifetime
+/// and type parameters (not just a single `'a`) are handled correctly.
 pub fn generate_seeds_impl(
     name: &syn::Ident,
+    generics: &syn::Generics,
     seeds_attr: &SeedsAttr,
-    has_lifetime: bool,
 ) -> proc_macro2::TokenStream {
     let prefix_bytes = &seeds_attr.prefix;
     let dynamic_count = seeds_attr.dynamic_seeds.len();
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    if has_lifetime {
-        quote! {
-            impl HasSeeds for #name<'_> {
-                const SEED_PREFIX: &'static [u8] = &[#(#prefix_bytes),*];
-                const SEED_DYNAMIC_COUNT: usize = #dynamic_count;
-            }
-        }
-    } else {
-        quote! {
-            impl HasSeeds for #name {
-                const SEED_PREFIX: &'static [u8] = &[#(#prefix_bytes),*];
-                const SEED_DYNAMIC_COUNT: usize = #dynamic_count;
-            }
+    quote! {
+        impl #impl_generics HasSeeds for #name #ty_generics #where_clause {
+            const SEED_PREFIX: &'static [u8] = &[#(#prefix_bytes),*];
+            const SEED_DYNAMIC_COUNT: usize = #dynamic_count;
         }
     }
 }
